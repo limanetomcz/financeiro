@@ -19,13 +19,19 @@ class CobrancaController extends Controller
             'parcela_ids.*' => ['uuid'],
             'vencimento' => ['required', 'date'],
             'meio' => ['nullable', 'string', 'max:20'],
+            'valor_juros' => ['nullable', 'numeric', 'min:0'],
+            'valor_multa' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         try {
             $cobranca = $service->executar(
                 $dados['parcela_ids'],
                 $dados['vencimento'],
-                $dados['meio'] ?? null
+                [
+                    'meio' => $dados['meio'] ?? null,
+                    'valor_juros' => $dados['valor_juros'] ?? 0,
+                    'valor_multa' => $dados['valor_multa'] ?? 0,
+                ]
             );
         } catch (DominioException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

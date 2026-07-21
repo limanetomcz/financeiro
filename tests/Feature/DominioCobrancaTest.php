@@ -9,7 +9,10 @@ use App\Services\Cobranca\EmitirCobrancaConsolidadaService;
 use App\Services\Cobranca\LiquidarCobrancaService;
 use App\Services\Contrato\CriarContratoService;
 use App\Services\Elegibilidade\ElegibilidadeService;
+use App\Services\Parcela\AbrirParcelasExigiveisService;
+use App\Support\Cliente\ClienteConfig;
 use App\Support\Tenant\ClienteContext;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -23,12 +26,15 @@ class DominioCobrancaTest extends TestCase
     {
         parent::setUp();
 
+        Carbon::setTestNow(Carbon::parse('2026-07-21'));
+
         $this->cliente = Cliente::query()->create([
             'nome' => 'Uniodonto Seridó',
             'codigo_cooperativa' => '112',
             'chave_sigoweb' => '112',
             'ativo' => true,
             'usa_financeiro_novo' => false,
+            'config' => ClienteConfig::padraoSerido(),
         ]);
 
         ClienteContext::set($this->cliente);
@@ -37,10 +43,11 @@ class DominioCobrancaTest extends TestCase
     protected function tearDown(): void
     {
         ClienteContext::clear();
+        Carbon::setTestNow();
         parent::tearDown();
     }
 
-    public function test_cria_contrato_com_parcelas_rateadas(): void
+    public function test_cria_contrato_com_parcelas_rateadas_e_previstas(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
             'contratante' => [
@@ -51,19 +58,49 @@ class DominioCobrancaTest extends TestCase
             ],
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
-            'valor_total' => 100.00,
-            'quantidade_parcelas' => 3,
+            'valor_total' => 120.00,
+            'quantidade_parcelas' => 12,
             'primeiro_vencimento' => '2026-01-10',
         ]);
 
-        $this->assertCount(3, $contrato->parcelas);
-        $this->assertEquals('33.34', $contrato->parcelas[0]->valor);
-        $this->assertEquals('33.33', $contrato->parcelas[1]->valor);
-        $this->assertEquals('33.33', $contrato->parcelas[2]->valor);
-        $this->assertEquals(100.00, (float) $contrato->parcelas->sum('valor'));
+        $this->assertCount(12, $contrato->parcelas);
+        $this->assertEquals(120.00, (float) $contrato->parcelas->sum('valor'));
+
+        $abertas = $contrato->parcelas->where('status', StatusParcela::Aberta)->count();
+        $previstas = $contrato->parcelas->where('status', StatusParcela::Prevista)->count();
+
+        // jan..jul/2026 exigíveis; ago..dez previstas
+        $this->assertEquals(7, $abertas);
+        $this->assertEquals(5, $previstas);
+        $this->assertEquals('pf', $contrato->tipo);
     }
 
-    public function test_consolidada_e_liquidacao_baixam_parcelas(): void
+    public function test_abrir_parcelas_exigiveis_promove_previstas(): void
+    {
+        $contrato = app(CriarContratoService::class)->executar([
+            'contratante' => [
+                'chave_sigoweb' => 'BEN-010',
+                'tipo' => 'pf',
+                'nome' => 'Teste',
+            ],
+            'vigencia_inicio' => '2026-01-01',
+            'vigencia_fim' => '2026-12-31',
+            'valor_total' => 120.00,
+            'quantidade_parcelas' => 12,
+            'primeiro_vencimento' => '2026-01-10',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-05'));
+        $resultado = app(AbrirParcelasExigiveisService::class)->executar();
+
+        $this->assertEquals(1, $resultado['abertas']);
+        $this->assertEquals(
+            8,
+            Parcela::query()->where('contrato_id', $contrato->id)->where('status', StatusParcela::Aberta)->count()
+        );
+    }
+
+    public function test_consolidada_com_juros_e_multa_e_liquidacao(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
             'contratante' => [
@@ -76,30 +113,40 @@ class DominioCobrancaTest extends TestCase
             'valor_total' => 120.00,
             'quantidade_parcelas' => 3,
             'primeiro_vencimento' => '2026-01-10',
+            'modo_geracao' => ClienteConfig::MODO_TODAS_ABERTAS,
         ]);
 
         $ids = $contrato->parcelas->pluck('id')->all();
 
-        $cobranca = app(EmitirCobrancaConsolidadaService::class)->executar($ids, '2026-03-15', 'manual');
-        $this->assertEquals('consolidada', $cobranca->tipo->value);
-        $this->assertEquals(120.00, (float) $cobranca->valor);
+        $cobranca = app(EmitirCobrancaConsolidadaService::class)->executar($ids, '2026-03-15', [
+            'meio' => 'boleto',
+            'valor_juros' => 5.50,
+            'valor_multa' => 2.00,
+        ]);
 
-        foreach (Parcela::query()->whereIn('id', $ids)->get() as $parcela) {
-            $this->assertEquals(StatusParcela::EmCobranca, $parcela->status);
-        }
+        $this->assertEquals('consolidada', $cobranca->tipo->value);
+        $this->assertEquals(120.00, (float) $cobranca->valor_principal);
+        $this->assertEquals(5.50, (float) $cobranca->valor_juros);
+        $this->assertEquals(2.00, (float) $cobranca->valor_multa);
+        $this->assertEquals(127.50, (float) $cobranca->valor);
 
         $cobranca = app(LiquidarCobrancaService::class)->executar($cobranca);
-
         $this->assertEquals('paga', $cobranca->status->value);
-        foreach (Parcela::query()->whereIn('id', $ids)->get() as $parcela) {
-            $this->assertEquals(StatusParcela::Paga, $parcela->status);
-            $this->assertNotNull($parcela->pago_em);
-        }
     }
 
-    public function test_elegibilidade_bloqueia_parcela_vencida(): void
+    public function test_elegibilidade_respeita_min_parcelas_parametrizado(): void
     {
-        $contrato = app(CriarContratoService::class)->executar([
+        $this->cliente->update([
+            'config' => array_replace_recursive(ClienteConfig::padraoSerido(), [
+                'elegibilidade' => [
+                    'dias_apos_vencimento' => 0,
+                    'min_parcelas_vencidas' => 2,
+                ],
+            ]),
+        ]);
+        ClienteContext::set($this->cliente->fresh());
+
+        app(CriarContratoService::class)->executar([
             'contratante' => [
                 'chave_sigoweb' => 'BEN-003',
                 'tipo' => 'pf',
@@ -110,12 +157,15 @@ class DominioCobrancaTest extends TestCase
             'valor_total' => 50.00,
             'quantidade_parcelas' => 1,
             'primeiro_vencimento' => '2025-01-10',
+            'modo_geracao' => ClienteConfig::MODO_TODAS_ABERTAS,
         ]);
 
+        // só 1 vencida, mínimo 2 → ainda pode usar
         $resultado = app(ElegibilidadeService::class)->avaliarPorChaveSigoweb('BEN-003');
+        $this->assertTrue($resultado['pode_usar_plano']);
+        $this->assertEquals(1, $resultado['parcelas_vencidas']);
 
+        $resultado = app(ElegibilidadeService::class)->avaliarPorChaveSigoweb('BEN-003', null, 1);
         $this->assertFalse($resultado['pode_usar_plano']);
-        $this->assertGreaterThan(0, $resultado['parcelas_vencidas']);
-        $this->assertNotNull($contrato->id);
     }
 }

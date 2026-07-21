@@ -129,7 +129,14 @@ O token precisa trazer a cooperativa (`par_coop`, ex. `112`) para o Financeiro r
 | POST | `/cobrancas/consolidadas` | sim |
 | GET | `/cobrancas/{id}` | sim |
 | POST | `/cobrancas/{id}/liquidar` | sim |
+| POST | `/parcelas/abrir-exigiveis` | sim |
 | GET | `/elegibilidade?chave_sigoweb=` | sim |
+
+Comando útil:
+
+```bash
+docker compose exec app php artisan parcelas:abrir-exigiveis --cliente=112
+```
 
 Detalhes do domínio: [dominio.md](dominio.md).  
 SSO: [integracao-sigoweb.md](integracao-sigoweb.md).

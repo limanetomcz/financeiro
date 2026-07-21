@@ -14,11 +14,13 @@ class ElegibilidadeController extends Controller
         $dados = $request->validate([
             'chave_sigoweb' => ['required', 'string', 'max:64'],
             'dias_carencia' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'min_parcelas_vencidas' => ['nullable', 'integer', 'min:1', 'max:48'],
         ]);
 
         $resultado = $service->avaliarPorChaveSigoweb(
             $dados['chave_sigoweb'],
-            (int) ($dados['dias_carencia'] ?? 0)
+            isset($dados['dias_carencia']) ? (int) $dados['dias_carencia'] : null,
+            isset($dados['min_parcelas_vencidas']) ? (int) $dados['min_parcelas_vencidas'] : null
         );
 
         return response()->json($resultado);

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Cliente;
+use App\Support\Cliente\ClienteConfig;
 use Illuminate\Database\Seeder;
 
 class ClienteSeridoSeeder extends Seeder
@@ -17,7 +18,7 @@ class ClienteSeridoSeeder extends Seeder
                 'ativo' => true,
                 'usa_financeiro_novo' => false,
                 'timezone' => 'America/Recife',
-                'config' => [],
+                'config' => ClienteConfig::padraoSerido(),
             ]
         );
     }

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CobrancaController;
 use App\Http\Controllers\Api\ContratoController;
 use App\Http\Controllers\Api\ElegibilidadeController;
 use App\Http\Controllers\Api\MeController;
+use App\Http\Controllers\Api\ParcelaController;
 use App\Http\Middleware\AuthenticateSigoweb;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +25,8 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/cobrancas/consolidadas', [CobrancaController::class, 'consolidar']);
     Route::get('/cobrancas/{id}', [CobrancaController::class, 'show']);
     Route::post('/cobrancas/{id}/liquidar', [CobrancaController::class, 'liquidar']);
+
+    Route::post('/parcelas/abrir-exigiveis', [ParcelaController::class, 'abrirExigiveis']);
 
     Route::get('/elegibilidade', ElegibilidadeController::class);
 });

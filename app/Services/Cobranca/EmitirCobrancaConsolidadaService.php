@@ -15,14 +15,23 @@ class EmitirCobrancaConsolidadaService
 {
     /**
      * @param  list<string>  $parcelaIds
+     * @param  array{meio?: ?string, valor_juros?: float|int|string, valor_multa?: float|int|string}  $opcoes
      */
-    public function executar(array $parcelaIds, string $vencimento, ?string $meio = null): Cobranca
+    public function executar(array $parcelaIds, string $vencimento, array $opcoes = []): Cobranca
     {
         if ($parcelaIds === []) {
             throw new DominioException('Informe ao menos uma parcela.');
         }
 
-        return DB::transaction(function () use ($parcelaIds, $vencimento, $meio) {
+        $valorJuros = round((float) ($opcoes['valor_juros'] ?? 0), 2);
+        $valorMulta = round((float) ($opcoes['valor_multa'] ?? 0), 2);
+        $meio = $opcoes['meio'] ?? null;
+
+        if ($valorJuros < 0 || $valorMulta < 0) {
+            throw new DominioException('Juros e multa não podem ser negativos.');
+        }
+
+        return DB::transaction(function () use ($parcelaIds, $vencimento, $meio, $valorJuros, $valorMulta) {
             /** @var Collection<int, Parcela> $parcelas */
             $parcelas = Parcela::query()
                 ->with('contrato')
@@ -45,11 +54,15 @@ class EmitirCobrancaConsolidadaService
                 }
             }
 
-            $valor = round((float) $parcelas->sum('valor'), 2);
+            $valorPrincipal = round((float) $parcelas->sum('valor'), 2);
+            $valor = round($valorPrincipal + $valorJuros + $valorMulta, 2);
 
             $cobranca = Cobranca::query()->create([
                 'contratante_id' => $contratanteIds->first(),
                 'tipo' => $parcelas->count() > 1 ? TipoCobranca::Consolidada : TipoCobranca::Simples,
+                'valor_principal' => $valorPrincipal,
+                'valor_juros' => $valorJuros,
+                'valor_multa' => $valorMulta,
                 'valor' => $valor,
                 'vencimento' => $vencimento,
                 'status' => StatusCobranca::Aberta,

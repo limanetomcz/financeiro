@@ -43,6 +43,7 @@ Rotas autenticadas usam `Authorization: Bearer <JWT do Sigoweb>` (sem novo login
 | Doc | Conteúdo |
 |-----|----------|
 | [docs/como-usar.md](docs/como-usar.md) | **Passo a passo** para clonar, subir e usar |
+| [docs/discovery-serido.md](docs/discovery-serido.md) | Discovery piloto Seridó (112) |
 | [docs/integracao-sigoweb.md](docs/integracao-sigoweb.md) | SSO: mesmo JWT do Sigoweb, sem novo login |
 | [docs/cliente-tenant.md](docs/cliente-tenant.md) | Cadastro de Cliente (tenant) + `chave_sigoweb` |
 | [docs/dominio.md](docs/dominio.md) | Contrato, parcela, cobrança, elegibilidade |
@@ -248,9 +249,10 @@ API local: http://localhost:8085
 2. ~~Multi-tenant + Cliente Seridó~~
 3. ~~Auth JWT Sigoweb (middleware + `/api/v1/me`)~~ — configurar `SIGOWEB_JWT_SECRET` no `.env`
 4. ~~Migrations do domínio: contrato, parcela, cobrança, vínculo, elegibilidade~~
-5. Discovery documentado da Seridó (inventário 1–5 + procedures Oracle quando necessário)
+5. ~~Discovery Seridó (parcial)~~ — ver [docs/discovery-serido.md](docs/discovery-serido.md); Oracle/procedures ainda sob demanda
 6. Plano de migração de dados + reconciliação
-7. Cutover `112` / flag `usa_financeiro_novo`
+7. Adaptador Sicredi (boleto/CNAB) + PIX
+8. Cutover `112` / flag `usa_financeiro_novo`
 
 **Oracle:** quando precisar do fonte das procedures da Seridó, avisar — não conectar o Oracle como banco do Financeiro.
 

@@ -8,6 +8,7 @@ use App\Enums\TipoContratante;
 use App\Models\Contratante;
 use App\Models\Contrato;
 use App\Models\Parcela;
+use App\Support\Cliente\ClienteConfig;
 use App\Support\Tenant\ClienteContext;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class CriarContratoService
      *   codigo?: ?string,
      *   renovado_de_contrato_id?: ?string,
      *   primeiro_vencimento?: ?string,
+     *   modo_geracao?: ?string,
      * }  $dados
      */
     public function executar(array $dados): Contrato
@@ -41,14 +43,20 @@ class CriarContratoService
         }
 
         return DB::transaction(function () use ($dados, $qtd, $valorTotal) {
+            $cliente = ClienteContext::get();
+            $modo = $dados['modo_geracao']
+                ?? ClienteConfig::modoGeracaoParcelas($cliente);
+
             $contratanteDados = $dados['contratante'];
+            $tipo = TipoContratante::from($contratanteDados['tipo']);
+
             $contratante = Contratante::query()->firstOrCreate(
                 [
-                    'cliente_id' => ClienteContext::id(),
+                    'cliente_id' => $cliente->id,
                     'chave_sigoweb' => $contratanteDados['chave_sigoweb'],
                 ],
                 [
-                    'tipo' => TipoContratante::from($contratanteDados['tipo']),
+                    'tipo' => $tipo,
                     'nome' => $contratanteDados['nome'],
                     'documento' => $contratanteDados['documento'] ?? null,
                 ]
@@ -56,6 +64,7 @@ class CriarContratoService
 
             $contrato = Contrato::query()->create([
                 'contratante_id' => $contratante->id,
+                'tipo' => $tipo->value,
                 'renovado_de_contrato_id' => $dados['renovado_de_contrato_id'] ?? null,
                 'chave_plano_sigoweb' => $dados['chave_plano_sigoweb'] ?? null,
                 'codigo' => $dados['codigo'] ?? null,
@@ -68,19 +77,37 @@ class CriarContratoService
 
             $valores = $this->ratearValor($valorTotal, $qtd);
             $primeiroVencimento = Carbon::parse($dados['primeiro_vencimento'] ?? $dados['vigencia_inicio']);
+            $referencia = Carbon::today();
 
             foreach ($valores as $i => $valorParcela) {
+                $vencimento = $primeiroVencimento->copy()->addMonthsNoOverflow($i);
+                $status = $this->statusInicialParcela($modo, $vencimento, $referencia);
+
                 Parcela::query()->create([
                     'contrato_id' => $contrato->id,
                     'numero' => $i + 1,
-                    'vencimento' => $primeiroVencimento->copy()->addMonthsNoOverflow($i)->toDateString(),
+                    'vencimento' => $vencimento->toDateString(),
                     'valor' => $valorParcela,
-                    'status' => StatusParcela::Aberta,
+                    'status' => $status,
                 ]);
             }
 
             return $contrato->load(['contratante', 'parcelas']);
         });
+    }
+
+    private function statusInicialParcela(string $modo, Carbon $vencimento, Carbon $referencia): StatusParcela
+    {
+        if ($modo === ClienteConfig::MODO_TODAS_ABERTAS) {
+            return StatusParcela::Aberta;
+        }
+
+        // mensal_exigivel: exigível se ano-mês do vencimento <= ano-mês de referência
+        if ($vencimento->format('Y-m') <= $referencia->format('Y-m')) {
+            return StatusParcela::Aberta;
+        }
+
+        return StatusParcela::Prevista;
     }
 
     /**

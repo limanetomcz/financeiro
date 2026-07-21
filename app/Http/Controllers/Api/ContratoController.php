@@ -44,6 +44,7 @@ class ContratoController extends Controller
             'codigo' => ['nullable', 'string', 'max:40'],
             'renovado_de_contrato_id' => ['nullable', 'uuid', 'exists:contratos,id'],
             'primeiro_vencimento' => ['nullable', 'date'],
+            'modo_geracao' => ['nullable', 'in:mensal_exigivel,todas_abertas'],
         ]);
 
         $contrato = $service->executar($dados);

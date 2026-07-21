@@ -19,6 +19,7 @@ class Contrato extends Model
     protected $fillable = [
         'cliente_id',
         'contratante_id',
+        'tipo',
         'renovado_de_contrato_id',
         'chave_plano_sigoweb',
         'codigo',

@@ -21,6 +21,9 @@ class Cobranca extends Model
         'cliente_id',
         'contratante_id',
         'tipo',
+        'valor_principal',
+        'valor_juros',
+        'valor_multa',
         'valor',
         'vencimento',
         'status',
@@ -32,6 +35,9 @@ class Cobranca extends Model
     protected function casts(): array
     {
         return [
+            'valor_principal' => 'decimal:2',
+            'valor_juros' => 'decimal:2',
+            'valor_multa' => 'decimal:2',
             'valor' => 'decimal:2',
             'vencimento' => 'date',
             'status' => StatusCobranca::class,
