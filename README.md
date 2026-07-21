@@ -12,6 +12,7 @@ Objetivo: substituir o modelo atual de **mensalidades** por um domínio alinhado
 |-----|----------|
 | [docs/integracao-sigoweb.md](docs/integracao-sigoweb.md) | SSO: mesmo JWT do Sigoweb, sem novo login |
 | [docs/cliente-tenant.md](docs/cliente-tenant.md) | Cadastro de Cliente (tenant) + `chave_sigoweb` |
+| [docs/dominio.md](docs/dominio.md) | Contrato, parcela, cobrança, elegibilidade |
 | [docs/ambiente.md](docs/ambiente.md) | Docker, portas, stack |
 
 ---
@@ -220,7 +221,7 @@ API local: http://localhost:8085
 1. ~~Scaffold Laravel + Docker + MySQL~~
 2. ~~Multi-tenant + Cliente Seridó~~
 3. ~~Auth JWT Sigoweb (middleware + `/api/v1/me`)~~ — configurar `SIGOWEB_JWT_SECRET` no `.env`
-4. Migrations do domínio: contrato, parcela, cobrança, vínculo, elegibilidade
+4. ~~Migrations do domínio: contrato, parcela, cobrança, vínculo, elegibilidade~~
 5. Discovery documentado da Seridó (inventário 1–5 + procedures Oracle quando necessário)
 6. Plano de migração de dados + reconciliação
 7. Cutover `112` / flag `usa_financeiro_novo`
