@@ -16,7 +16,7 @@ WORKDIR /var/www/html
 
 COPY . /var/www/html
 
-RUN chmod +x /var/www/html/docker/entrypoint.sh \
+RUN chmod +x /var/www/html/docker/entrypoint.sh /var/www/html/docker/entrypoint-queue.sh \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R ug+rwx /var/www/html/storage /var/www/html/bootstrap/cache
 

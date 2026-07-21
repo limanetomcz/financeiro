@@ -18,15 +18,82 @@ services:
       DB_DATABASE: financeiro
       DB_USERNAME: financeiro
       DB_PASSWORD: financeiro
+      REDIS_CLIENT: predis
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
+    networks:
+      - financeiro
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financeiro-queue
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8085
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: financeiro
+      DB_USERNAME: financeiro
+      DB_PASSWORD: financeiro
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      QUEUE_NAMES: default,cobranca,bancario
+    entrypoint: ["/var/www/html/docker/entrypoint-queue.sh"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - financeiro
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financeiro-scheduler
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: financeiro
+      DB_USERNAME: financeiro
+      DB_PASSWORD: financeiro
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    entrypoint: ["php", "artisan", "schedule:work"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - financeiro
 
@@ -55,11 +122,15 @@ services:
     container_name: financeiro-redis
     ports:
       - "6380:6379"
+    volumes:
+      - financeiro_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
     networks:
       - financeiro
 
 volumes:
   financeiro_mysql_data:
+  financeiro_redis_data:
 
 networks:
   financeiro:

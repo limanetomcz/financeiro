@@ -15,10 +15,13 @@
 | Serviço | Porta host | Uso |
 |---------|------------|-----|
 | `app` | 8085 → 80 | API / app Financeiro |
+| `queue` | — | Worker Redis (`default,cobranca,bancario`) |
+| `scheduler` | — | `schedule:work` |
 | `mysql` | 3307 → 3306 | MySQL do domínio |
-| `redis` | 6380 → 6379 | Cache / fila |
+| `redis` | 6380 → 6379 | Cache / fila / session |
 
-Portas escolhidas para não colidir com Apache/MySQL locais do Sigo.
+Portas escolhidas para não colidir com Apache/MySQL locais do Sigo.  
+Detalhes de filas: [filas-redis.md](filas-redis.md).
 
 ## Setup
 

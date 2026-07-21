@@ -33,6 +33,8 @@ curl http://localhost:8085/api/v1/health
 | API | http://localhost:8085 |
 | MySQL | `127.0.0.1:3307` |
 | Redis | `127.0.0.1:6380` |
+| Queue worker | container `financeiro-queue` |
+| Scheduler | container `financeiro-scheduler` |
 
 Rotas autenticadas usam `Authorization: Bearer <JWT do Sigoweb>` (sem novo login).
 
@@ -48,6 +50,7 @@ Rotas autenticadas usam `Authorization: Bearer <JWT do Sigoweb>` (sem novo login
 | [docs/cliente-tenant.md](docs/cliente-tenant.md) | Cadastro de Cliente (tenant) + `chave_sigoweb` |
 | [docs/dominio.md](docs/dominio.md) | Contrato, parcela, cobrança, elegibilidade |
 | [docs/ambiente.md](docs/ambiente.md) | Docker, portas, stack |
+| [docs/filas-redis.md](docs/filas-redis.md) | Redis, workers e filas multi-tenant |
 
 ---
 
@@ -253,6 +256,8 @@ API local: http://localhost:8085
 6. Plano de migração de dados + reconciliação
 7. Adaptador Sicredi (boleto/CNAB) + PIX
 8. Cutover `112` / flag `usa_financeiro_novo`
+
+Infra já preparada: **Redis + filas + worker + scheduler** (ver [docs/filas-redis.md](docs/filas-redis.md)).
 
 **Oracle:** quando precisar do fonte das procedures da Seridó, avisar — não conectar o Oracle como banco do Financeiro.
 

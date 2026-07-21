@@ -69,7 +69,9 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Esperado: `financeiro-app`, `financeiro-mysql` (healthy), `financeiro-redis`.
+Esperado: `financeiro-app`, `financeiro-queue`, `financeiro-scheduler`, `financeiro-mysql` (healthy), `financeiro-redis`.
+
+Filas/Redis: ver [filas-redis.md](filas-redis.md).
 
 ## 4. Dependências, migrate e seed
 
