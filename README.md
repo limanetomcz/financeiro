@@ -6,6 +6,16 @@ Objetivo: substituir o modelo atual de **mensalidades** por um domínio alinhado
 
 ---
 
+## Documentação deste repositório
+
+| Doc | Conteúdo |
+|-----|----------|
+| [docs/integracao-sigoweb.md](docs/integracao-sigoweb.md) | SSO: mesmo JWT do Sigoweb, sem novo login |
+| [docs/cliente-tenant.md](docs/cliente-tenant.md) | Cadastro de Cliente (tenant) + `chave_sigoweb` |
+| [docs/ambiente.md](docs/ambiente.md) | Docker, portas, stack |
+
+---
+
 ## Por que existe este projeto
 
 O contas a receber atual está espalhado entre legado PHP, Laravel e Oracle:
@@ -34,6 +44,22 @@ Migrar tela para o `sigo-laravel` **não resolveu**: o motor de regras continua 
 
 **Não é:** API fina em cima do Oracle.  
 **Não é:** copiar o conceito de “mensalidade” para o MySQL.
+
+---
+
+## Integração com o Sigoweb (resumo)
+
+- Usuário **não** faz login de novo no Financeiro.
+- Browser reutiliza o JWT já guardado no `localStorage` após login no Sigoweb.
+- Financeiro valida o JWT e resolve o **Cliente** via `par_coop` ↔ `chave_sigoweb` / `codigo_cooperativa`.
+- Detalhes em `docs/integracao-sigoweb.md`.
+
+## Cliente (tenant)
+
+- Cadastro nosso de cada Uniodonto (piloto: Seridó `112`).
+- Campo `chave_sigoweb` para correlacionar com o outro lado.
+- Multi-tenant: **um MySQL**, coluna `cliente_id` em todas as tabelas de negócio.
+- Detalhes em `docs/cliente-tenant.md`.
 
 ---
 
@@ -174,14 +200,32 @@ Cutover por cooperativa exige interruptor claro: legado **não** gera/baixa tít
 
 ---
 
-## Próximos passos (quando formos implementar)
+## Stack local
 
-1. Scaffold do app Laravel + MySQL neste diretório
-2. Migrations do domínio mínimo: contrato, parcela, cobrança, vínculo cobrança↔parcelas, elegibilidade
-3. API do MVP + autenticação
-4. Discovery documentado da Seridó (resultado do inventário 1–5)
-5. Plano de migração de dados + critérios de reconciliação
-6. Integração pontual no Sigoweb / flag `112`
+Ver [docs/ambiente.md](docs/ambiente.md).
+
+```bash
+# Docker (neste PC via WSL)
+cd /mnt/d/sistemas/Apache24/htdocs/uniodonto/financeiro
+docker compose up -d --build
+docker compose exec app php artisan migrate --seed
+```
+
+API local: http://localhost:8085
+
+---
+
+## Próximos passos
+
+1. ~~Scaffold Laravel + Docker + MySQL~~
+2. ~~Multi-tenant + Cliente Seridó~~
+3. ~~Auth JWT Sigoweb (middleware + `/api/v1/me`)~~ — configurar `SIGOWEB_JWT_SECRET` no `.env`
+4. Migrations do domínio: contrato, parcela, cobrança, vínculo, elegibilidade
+5. Discovery documentado da Seridó (inventário 1–5 + procedures Oracle quando necessário)
+6. Plano de migração de dados + reconciliação
+7. Cutover `112` / flag `usa_financeiro_novo`
+
+**Oracle:** quando precisar do fonte das procedures da Seridó, avisar — não conectar o Oracle como banco do Financeiro.
 
 ---
 
