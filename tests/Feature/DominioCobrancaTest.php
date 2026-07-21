@@ -113,7 +113,7 @@ class DominioCobrancaTest extends TestCase
             'valor_total' => 120.00,
             'quantidade_parcelas' => 3,
             'primeiro_vencimento' => '2026-01-10',
-            'modo_geracao' => ClienteConfig::MODO_TODAS_ABERTAS,
+            'modo_emissao' => 'imediata',
         ]);
 
         $ids = $contrato->parcelas->pluck('id')->all();
@@ -157,7 +157,7 @@ class DominioCobrancaTest extends TestCase
             'valor_total' => 50.00,
             'quantidade_parcelas' => 1,
             'primeiro_vencimento' => '2025-01-10',
-            'modo_geracao' => ClienteConfig::MODO_TODAS_ABERTAS,
+            'modo_emissao' => 'imediata',
         ]);
 
         // só 1 vencida, mínimo 2 → ainda pode usar

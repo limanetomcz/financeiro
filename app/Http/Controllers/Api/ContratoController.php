@@ -39,12 +39,15 @@ class ContratoController extends Controller
             'vigencia_inicio' => ['required', 'date'],
             'vigencia_fim' => ['required', 'date', 'after_or_equal:vigencia_inicio'],
             'valor_total' => ['required', 'numeric', 'gt:0'],
-            'quantidade_parcelas' => ['required', 'integer', 'min:1', 'max:48'],
+            'quantidade_parcelas' => ['nullable', 'integer', 'min:1', 'max:48'],
             'chave_plano_sigoweb' => ['nullable', 'string', 'max:64'],
             'codigo' => ['nullable', 'string', 'max:40'],
             'renovado_de_contrato_id' => ['nullable', 'uuid', 'exists:contratos,id'],
             'primeiro_vencimento' => ['nullable', 'date'],
+            'perfil_pagamento' => ['nullable', 'in:boleto_parcelado,cartao_parcelado,a_vista'],
+            'modo_emissao' => ['nullable', 'in:imediata,escalonada'],
             'modo_geracao' => ['nullable', 'in:mensal_exigivel,todas_abertas'],
+            'ja_pago' => ['nullable', 'boolean'],
         ]);
 
         $contrato = $service->executar($dados);

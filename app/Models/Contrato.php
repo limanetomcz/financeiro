@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ModoEmissao;
+use App\Enums\PerfilPagamento;
 use App\Enums\StatusContrato;
 use App\Models\Concerns\BelongsToCliente;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -20,6 +22,8 @@ class Contrato extends Model
         'cliente_id',
         'contratante_id',
         'tipo',
+        'perfil_pagamento',
+        'modo_emissao',
         'renovado_de_contrato_id',
         'chave_plano_sigoweb',
         'codigo',
@@ -37,6 +41,8 @@ class Contrato extends Model
             'vigencia_fim' => 'date',
             'valor_total' => 'decimal:2',
             'status' => StatusContrato::class,
+            'perfil_pagamento' => PerfilPagamento::class,
+            'modo_emissao' => ModoEmissao::class,
         ];
     }
 

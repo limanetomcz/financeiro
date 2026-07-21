@@ -27,7 +27,10 @@ class AbrirParcelasExigiveisService
                 ->get();
 
             foreach ($parcelas as $parcela) {
-                $parcela->update(['status' => StatusParcela::Aberta]);
+                $parcela->update([
+                    'status' => StatusParcela::Aberta,
+                    'emitida_em' => $parcela->emitida_em ?? $parcela->vencimento->copy()->startOfMonth()->toDateString(),
+                ]);
             }
 
             return ['abertas' => $parcelas->count()];

@@ -26,6 +26,11 @@ Quem tem o contrato conosco (PF ou PJ).
 
 Venda com vigência (ex. anual), renovação explícita via novo contrato (`renovado_de_contrato_id`).
 
+| Campo | Uso |
+|-------|-----|
+| `perfil_pagamento` | `boleto_parcelado` \| `cartao_parcelado` \| `a_vista` |
+| `modo_emissao` | `imediata` (CR no ato) \| `escalonada` (CR mês a mês) |
+
 | Status | Significado |
 |--------|-------------|
 | `rascunho` | Ainda não vigente |
@@ -34,7 +39,8 @@ Venda com vigência (ex. anual), renovação explícita via novo contrato (`reno
 | `encerrado` | Vigência terminou |
 | `cancelado` | Cancelado |
 
-**Não** existe renovação implícita por “parcela 13”.
+**Não** existe renovação implícita por “parcela 13”.  
+Casos: [casos-emissao-inadimplencia.md](casos-emissao-inadimplencia.md).
 
 ### Parcela
 
@@ -49,7 +55,10 @@ Fatia do contrato. É a dívida unitária.
 | `cancelada` | Anulada |
 | `perdida` | Baixa como perda (futuro) |
 
-Modo padrão Seridó (`clientes.config.parcelas.modo_geracao = mensal_exigivel`): ao criar o contrato, parcelas do mês corrente/passado nascem `aberta`; futuras nascem `prevista`. Comando/API `parcelas:abrir-exigiveis` promove no virar do mês.
+Campo `emitida_em`: quando a parcela entrou no CR.  
+`modo_emissao = escalonada` (padrão boleto): mês corrente `aberta` + `emitida_em`; futuros `prevista` sem emissão.  
+`modo_emissao = imediata` (ex. cartão 12x no ato): todas `aberta` com `emitida_em` na adesão.  
+Job/API `parcelas:abrir-exigiveis` promove `prevista` → `aberta` no virar do mês.
 
 ### Cobrança
 

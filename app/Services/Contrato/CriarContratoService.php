@@ -2,6 +2,8 @@
 
 namespace App\Services\Contrato;
 
+use App\Enums\ModoEmissao;
+use App\Enums\PerfilPagamento;
 use App\Enums\StatusContrato;
 use App\Enums\StatusParcela;
 use App\Enums\TipoContratante;
@@ -22,17 +24,29 @@ class CriarContratoService
      *   vigencia_inicio: string,
      *   vigencia_fim: string,
      *   valor_total: float|string,
-     *   quantidade_parcelas: int,
+     *   quantidade_parcelas?: int,
      *   chave_plano_sigoweb?: ?string,
      *   codigo?: ?string,
      *   renovado_de_contrato_id?: ?string,
      *   primeiro_vencimento?: ?string,
-     *   modo_geracao?: ?string,
+     *   perfil_pagamento?: string,
+     *   modo_emissao?: string,
+     *   modo_geracao?: string,
+     *   ja_pago?: bool,
      * }  $dados
      */
     public function executar(array $dados): Contrato
     {
-        $qtd = (int) $dados['quantidade_parcelas'];
+        $perfil = PerfilPagamento::from(
+            $dados['perfil_pagamento'] ?? PerfilPagamento::BoletoParcelado->value
+        );
+
+        $modoEmissao = $this->resolverModoEmissao($dados, $perfil);
+
+        $qtd = $perfil === PerfilPagamento::AVista
+            ? 1
+            : (int) ($dados['quantidade_parcelas'] ?? 0);
+
         if ($qtd < 1) {
             throw new InvalidArgumentException('quantidade_parcelas deve ser >= 1.');
         }
@@ -42,11 +56,10 @@ class CriarContratoService
             throw new InvalidArgumentException('valor_total deve ser > 0.');
         }
 
-        return DB::transaction(function () use ($dados, $qtd, $valorTotal) {
-            $cliente = ClienteContext::get();
-            $modo = $dados['modo_geracao']
-                ?? ClienteConfig::modoGeracaoParcelas($cliente);
+        $jaPago = (bool) ($dados['ja_pago'] ?? false);
 
+        return DB::transaction(function () use ($dados, $qtd, $valorTotal, $perfil, $modoEmissao, $jaPago) {
+            $cliente = ClienteContext::get();
             $contratanteDados = $dados['contratante'];
             $tipo = TipoContratante::from($contratanteDados['tipo']);
 
@@ -65,6 +78,8 @@ class CriarContratoService
             $contrato = Contrato::query()->create([
                 'contratante_id' => $contratante->id,
                 'tipo' => $tipo->value,
+                'perfil_pagamento' => $perfil,
+                'modo_emissao' => $modoEmissao,
                 'renovado_de_contrato_id' => $dados['renovado_de_contrato_id'] ?? null,
                 'chave_plano_sigoweb' => $dados['chave_plano_sigoweb'] ?? null,
                 'codigo' => $dados['codigo'] ?? null,
@@ -76,19 +91,30 @@ class CriarContratoService
             ]);
 
             $valores = $this->ratearValor($valorTotal, $qtd);
-            $primeiroVencimento = Carbon::parse($dados['primeiro_vencimento'] ?? $dados['vigencia_inicio']);
-            $referencia = Carbon::today();
+            $primeiroVencimento = Carbon::parse(
+                $dados['primeiro_vencimento']
+                    ?? ($perfil === PerfilPagamento::AVista ? $dados['vigencia_fim'] : $dados['vigencia_inicio'])
+            );
+            $hoje = Carbon::today();
 
             foreach ($valores as $i => $valorParcela) {
                 $vencimento = $primeiroVencimento->copy()->addMonthsNoOverflow($i);
-                $status = $this->statusInicialParcela($modo, $vencimento, $referencia);
+                [$status, $emitidaEm, $pagoEm] = $this->definirParcelaInicial(
+                    $perfil,
+                    $modoEmissao,
+                    $vencimento,
+                    $hoje,
+                    $jaPago && $perfil === PerfilPagamento::AVista
+                );
 
                 Parcela::query()->create([
                     'contrato_id' => $contrato->id,
                     'numero' => $i + 1,
                     'vencimento' => $vencimento->toDateString(),
+                    'emitida_em' => $emitidaEm,
                     'valor' => $valorParcela,
                     'status' => $status,
+                    'pago_em' => $pagoEm,
                 ]);
             }
 
@@ -96,18 +122,56 @@ class CriarContratoService
         });
     }
 
-    private function statusInicialParcela(string $modo, Carbon $vencimento, Carbon $referencia): StatusParcela
+    /**
+     * @return array{0: StatusParcela, 1: ?string, 2: ?\Carbon\CarbonInterface}
+     */
+    private function definirParcelaInicial(
+        PerfilPagamento $perfil,
+        ModoEmissao $modo,
+        Carbon $vencimento,
+        Carbon $hoje,
+        bool $jaPagoAVista
+    ): array {
+        if ($jaPagoAVista) {
+            return [StatusParcela::Paga, $hoje->toDateString(), $hoje->copy()];
+        }
+
+        if ($modo === ModoEmissao::Imediata) {
+            return [StatusParcela::Aberta, $hoje->toDateString(), null];
+        }
+
+        // Escalonada: só entra no CR no mês do vencimento (emissão alinhada ao mês da parcela)
+        if ($vencimento->format('Y-m') <= $hoje->format('Y-m')) {
+            return [StatusParcela::Aberta, $vencimento->copy()->startOfMonth()->toDateString(), null];
+        }
+
+        return [StatusParcela::Prevista, null, null];
+    }
+
+    private function resolverModoEmissao(array $dados, PerfilPagamento $perfil): ModoEmissao
     {
-        if ($modo === ClienteConfig::MODO_TODAS_ABERTAS) {
-            return StatusParcela::Aberta;
+        if (! empty($dados['modo_emissao'])) {
+            return ModoEmissao::from($dados['modo_emissao']);
         }
 
-        // mensal_exigivel: exigível se ano-mês do vencimento <= ano-mês de referência
-        if ($vencimento->format('Y-m') <= $referencia->format('Y-m')) {
-            return StatusParcela::Aberta;
+        // Compat: modo_geracao antigo
+        if (! empty($dados['modo_geracao'])) {
+            return match ($dados['modo_geracao']) {
+                ClienteConfig::MODO_TODAS_ABERTAS => ModoEmissao::Imediata,
+                default => ModoEmissao::Escalonada,
+            };
         }
 
-        return StatusParcela::Prevista;
+        if ($perfil === PerfilPagamento::AVista) {
+            return ModoEmissao::Imediata;
+        }
+
+        $cliente = ClienteContext::get();
+        $padrao = ClienteConfig::modoGeracaoParcelas($cliente);
+
+        return $padrao === ClienteConfig::MODO_TODAS_ABERTAS
+            ? ModoEmissao::Imediata
+            : ModoEmissao::Escalonada;
     }
 
     /**

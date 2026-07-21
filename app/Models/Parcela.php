@@ -21,6 +21,7 @@ class Parcela extends Model
         'contrato_id',
         'numero',
         'vencimento',
+        'emitida_em',
         'valor',
         'status',
         'pago_em',
@@ -30,6 +31,7 @@ class Parcela extends Model
     {
         return [
             'vencimento' => 'date',
+            'emitida_em' => 'date',
             'valor' => 'decimal:2',
             'status' => StatusParcela::class,
             'pago_em' => 'datetime',

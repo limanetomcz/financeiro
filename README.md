@@ -51,6 +51,7 @@ Rotas autenticadas usam `Authorization: Bearer <JWT do Sigoweb>` (sem novo login
 | [docs/dominio.md](docs/dominio.md) | Contrato, parcela, cobrança, elegibilidade |
 | [docs/ambiente.md](docs/ambiente.md) | Docker, portas, stack |
 | [docs/filas-redis.md](docs/filas-redis.md) | Redis, workers e filas multi-tenant |
+| [docs/casos-emissao-inadimplencia.md](docs/casos-emissao-inadimplencia.md) | Cartão 12x, à vista, boleto mensal |
 
 ---
 
