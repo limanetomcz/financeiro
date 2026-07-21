@@ -4,7 +4,7 @@
 
 | Camada | Tecnologia |
 |--------|------------|
-| App | Laravel 11 (PHP 8.2+) |
+| App | Laravel 12 (PHP 8.2+) |
 | Banco | MySQL 8 |
 | Cache/fila (local) | Redis |
 | Containers | Docker Compose |
@@ -20,15 +20,17 @@
 
 Portas escolhidas para não colidir com Apache/MySQL locais do Sigo.
 
+## Setup
+
+Passo a passo completo (clone, `.env`, migrate, JWT, testes): **[como-usar.md](como-usar.md)**.
+
 ## Comandos úteis
 
-Via WSL (Docker neste ambiente está no WSL):
-
 ```bash
-cd /mnt/d/sistemas/Apache24/htdocs/uniodonto/financeiro
 docker compose up -d --build
 docker compose exec app php artisan migrate --seed
 docker compose logs -f app
+docker compose down
 ```
 
 ## Oracle

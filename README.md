@@ -4,12 +4,45 @@ Sistema novo, fora do monolito (`sigoweb` / `sigo-laravel`), com MySQL próprio.
 
 Objetivo: substituir o modelo atual de **mensalidades** por um domínio alinhado ao negócio real, começando pela Uniodonto Seridó (`par_coop` **112**).
 
+**Repositório:** https://github.com/limanetomcz/financeiro.git
+
+---
+
+## Como usar (setup rápido)
+
+Guia completo: **[docs/como-usar.md](docs/como-usar.md)**.
+
+```bash
+git clone https://github.com/limanetomcz/financeiro.git
+cd financeiro
+cp .env.example .env
+# edite .env → rode: php artisan key:generate
+# preencha SIGOWEB_JWT_SECRET (mesmo JWT_SECRET do sigo-laravel)
+
+docker compose up -d --build
+docker compose exec app composer install   # se necessário
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+
+curl http://localhost:8085/api/v1/health
+# {"ok":true,"service":"financeiro"}
+```
+
+| Serviço | URL / porta |
+|---------|-------------|
+| API | http://localhost:8085 |
+| MySQL | `127.0.0.1:3307` |
+| Redis | `127.0.0.1:6380` |
+
+Rotas autenticadas usam `Authorization: Bearer <JWT do Sigoweb>` (sem novo login).
+
 ---
 
 ## Documentação deste repositório
 
 | Doc | Conteúdo |
 |-----|----------|
+| [docs/como-usar.md](docs/como-usar.md) | **Passo a passo** para clonar, subir e usar |
 | [docs/integracao-sigoweb.md](docs/integracao-sigoweb.md) | SSO: mesmo JWT do Sigoweb, sem novo login |
 | [docs/cliente-tenant.md](docs/cliente-tenant.md) | Cadastro de Cliente (tenant) + `chave_sigoweb` |
 | [docs/dominio.md](docs/dominio.md) | Contrato, parcela, cobrança, elegibilidade |
@@ -203,14 +236,7 @@ Cutover por cooperativa exige interruptor claro: legado **não** gera/baixa tít
 
 ## Stack local
 
-Ver [docs/ambiente.md](docs/ambiente.md).
-
-```bash
-# Docker (neste PC via WSL)
-cd /mnt/d/sistemas/Apache24/htdocs/uniodonto/financeiro
-docker compose up -d --build
-docker compose exec app php artisan migrate --seed
-```
+Ver [docs/ambiente.md](docs/ambiente.md) e o passo a passo em [docs/como-usar.md](docs/como-usar.md).
 
 API local: http://localhost:8085
 
