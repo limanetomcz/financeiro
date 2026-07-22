@@ -23,6 +23,11 @@ class Contratante extends Model
         'tipo',
         'nome',
         'documento',
+        'endereco',
+        'bairro',
+        'cidade',
+        'cep',
+        'uf',
     ];
 
     protected function casts(): array

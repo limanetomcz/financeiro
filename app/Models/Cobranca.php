@@ -29,6 +29,9 @@ class Cobranca extends Model
         'status',
         'meio',
         'referencia_externa',
+        'nosso_numero',
+        'numero_registro',
+        'data_emissao_boleto',
         'pago_em',
     ];
 
@@ -40,6 +43,7 @@ class Cobranca extends Model
             'valor_multa' => 'decimal:2',
             'valor' => 'decimal:2',
             'vencimento' => 'date',
+            'data_emissao_boleto' => 'date',
             'status' => StatusCobranca::class,
             'tipo' => TipoCobranca::class,
             'pago_em' => 'datetime',

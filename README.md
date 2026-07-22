@@ -256,8 +256,9 @@ API local: http://localhost:8085
 4. ~~Migrations do domínio: contrato, parcela, cobrança, vínculo, elegibilidade~~
 5. ~~Discovery Seridó (parcial)~~ — ver [docs/discovery-serido.md](docs/discovery-serido.md); Oracle/procedures ainda sob demanda
 6. Plano de migração de dados + reconciliação
-7. Adaptador Sicredi (boleto/CNAB) + PIX
-8. Cutover `112` / flag `usa_financeiro_novo`
+7. ~~Remessa Sicredi CNAB 240 (arquitetura SOLID + fila `bancario`)~~ — ver [docs/remessa-cnab.md](docs/remessa-cnab.md); aguardando `view_remessa_boletos` + `Fun_GerarNumRegistroUnicred` para fechar regras
+8. Adaptador registro boleto/PIX Sicredi + retorno CNAB
+9. Cutover `112` / flag `usa_financeiro_novo`
 
 Infra já preparada: **Redis + filas + worker + scheduler** (ver [docs/filas-redis.md](docs/filas-redis.md)).
 

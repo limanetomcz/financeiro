@@ -20,6 +20,7 @@ class Cliente extends Model
         'usa_financeiro_novo',
         'timezone',
         'config',
+        'contador_boletos_unicred',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class Cliente extends Model
             'ativo' => 'boolean',
             'usa_financeiro_novo' => 'boolean',
             'config' => 'array',
+            'contador_boletos_unicred' => 'integer',
         ];
     }
 

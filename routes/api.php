@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ElegibilidadeController;
 use App\Http\Controllers\Api\FaturaController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ParcelaController;
+use App\Http\Controllers\Api\RemessaController;
 use App\Http\Controllers\Api\SituacaoFinanceiraController;
 use App\Http\Middleware\AuthenticateSigoweb;
 use Illuminate\Support\Facades\Route;
@@ -39,4 +40,10 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
 
     /** Resumo financeiro do contratante (Sigoweb). */
     Route::get('/financeiro', SituacaoFinanceiraController::class);
+
+    /** Remessa CNAB (fila bancario; use sincrono=1 só em testes/piloto). */
+    Route::get('/remessas', [RemessaController::class, 'index']);
+    Route::post('/remessas', [RemessaController::class, 'store']);
+    Route::get('/remessas/{id}', [RemessaController::class, 'show']);
+    Route::get('/remessas/{id}/download', [RemessaController::class, 'download']);
 });

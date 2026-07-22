@@ -79,6 +79,19 @@ Authorization: Bearer {jwt}
 
 Retorna: contratante, elegibilidade (pode atender?), contratos, parcelas em aberto/vencidas, faturas PJ em aberto e `saldo_em_aberto`.
 
+## Remessa CNAB
+
+```http
+POST /api/v1/remessas
+Authorization: Bearer {jwt}
+
+{ "vencimento_inicial": "2026-04-01", "vencimento_final": "2026-04-30" }
+```
+
+Resposta `202`: remessa enfileirada. Download: `GET /api/v1/remessas/{id}/download`.
+
+Detalhes: [remessa-cnab.md](remessa-cnab.md).
+
 Só elegibilidade (mais leve): `GET /api/v1/elegibilidade?chave_sigoweb=...`
 
 ## Variáveis de ambiente
