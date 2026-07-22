@@ -3,8 +3,11 @@
 namespace App\Services\Elegibilidade;
 
 use App\Enums\StatusContrato;
+use App\Enums\StatusFatura;
 use App\Enums\StatusParcela;
+use App\Enums\TipoContratante;
 use App\Models\Contratante;
+use App\Models\Fatura;
 use App\Models\Parcela;
 use App\Support\Cliente\ClienteConfig;
 use App\Support\Tenant\ClienteContext;
@@ -13,14 +16,11 @@ use Carbon\Carbon;
 class ElegibilidadeService
 {
     /**
-     * Avalia se o contratante pode ser atendido (não está inadimplente).
-     *
-     * Parâmetros vêm de `clientes.config.elegibilidade` (e podem ser sobrescritos na chamada).
-     *
      * @return array{
      *   pode_usar_plano: bool,
      *   motivo: ?string,
      *   parcelas_vencidas: int,
+     *   faturas_vencidas: int,
      *   parametros: array{dias_apos_vencimento: int, min_parcelas_vencidas: int}
      * }
      */
@@ -35,15 +35,47 @@ class ElegibilidadeService
             'min_parcelas_vencidas' => $min,
         ];
 
+        $baseNegado = fn (string $motivo, int $parcelas = 0, int $faturas = 0) => [
+            'pode_usar_plano' => false,
+            'motivo' => $motivo,
+            'parcelas_vencidas' => $parcelas,
+            'faturas_vencidas' => $faturas,
+            'parametros' => $parametros,
+        ];
+
         $contratante = Contratante::query()
             ->where('chave_sigoweb', $chaveSigoweb)
             ->first();
 
         if (! $contratante) {
+            return $baseNegado('Contratante não encontrado no Financeiro.');
+        }
+
+        $limite = Carbon::today()->subDays($dias)->toDateString();
+
+        // PF vinculado a empresa: herda inadimplência da PJ se configurado
+        if (
+            $contratante->tipo === TipoContratante::Pf
+            && $contratante->empresa_id
+            && ClienteConfig::pjBloquearBeneficiariosSeEmpresaInadimplente($cliente)
+        ) {
+            $faturasEmpresa = $this->contarFaturasVencidas($contratante->empresa_id, $limite);
+            if ($faturasEmpresa >= $min) {
+                return $baseNegado('Empresa inadimplente — atendimento bloqueado.', 0, $faturasEmpresa);
+            }
+        }
+
+        if ($contratante->tipo === TipoContratante::Pj) {
+            $faturasVencidas = $this->contarFaturasVencidas($contratante->id, $limite);
+            if ($faturasVencidas >= $min) {
+                return $baseNegado("Há {$faturasVencidas} fatura(s) vencida(s).", 0, $faturasVencidas);
+            }
+
             return [
-                'pode_usar_plano' => false,
-                'motivo' => 'Contratante não encontrado no Financeiro.',
+                'pode_usar_plano' => true,
+                'motivo' => null,
                 'parcelas_vencidas' => 0,
+                'faturas_vencidas' => $faturasVencidas,
                 'parametros' => $parametros,
             ];
         }
@@ -53,15 +85,8 @@ class ElegibilidadeService
             ->exists();
 
         if ($temSuspenso) {
-            return [
-                'pode_usar_plano' => false,
-                'motivo' => 'Contrato suspenso.',
-                'parcelas_vencidas' => 0,
-                'parametros' => $parametros,
-            ];
+            return $baseNegado('Contrato suspenso.');
         }
-
-        $limite = Carbon::today()->subDays($dias)->toDateString();
 
         $vencidas = Parcela::query()
             ->whereHas('contrato', function ($q) use ($contratante) {
@@ -73,19 +98,27 @@ class ElegibilidadeService
             ->count();
 
         if ($vencidas >= $min) {
-            return [
-                'pode_usar_plano' => false,
-                'motivo' => "Há {$vencidas} parcela(s) vencida(s) (mínimo para bloquear: {$min}).",
-                'parcelas_vencidas' => $vencidas,
-                'parametros' => $parametros,
-            ];
+            return $baseNegado(
+                "Há {$vencidas} parcela(s) vencida(s) (mínimo para bloquear: {$min}).",
+                $vencidas
+            );
         }
 
         return [
             'pode_usar_plano' => true,
             'motivo' => null,
             'parcelas_vencidas' => $vencidas,
+            'faturas_vencidas' => 0,
             'parametros' => $parametros,
         ];
+    }
+
+    private function contarFaturasVencidas(string $empresaId, string $limite): int
+    {
+        return Fatura::query()
+            ->where('contratante_id', $empresaId)
+            ->whereIn('status', [StatusFatura::Aberta, StatusFatura::EmCobranca])
+            ->whereDate('vencimento', '<', $limite)
+            ->count();
     }
 }

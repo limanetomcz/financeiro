@@ -10,14 +10,15 @@ Inventário do que a Seridó faz hoje de contas a receber, para orientar o MVP d
 ## 1. Geração de faturas (PJ / planos empresariais)
 
 - [x] Usa fatura PJ? **Sim — tem PF e PJ**
-- [x] PJ é um pouco diferente: faturas podem ter lançamentos de impostos (PIS, COFINS, IR, ISS). PF geralmente não tem imposto.
-- [ ] Quem gera (rotina automática / tela / job)? *(detalhar depois)*
-- [ ] Periodicidade
+- [x] Ciclo **sempre mensal** (sem anuidade PJ)
+- [x] Composição: soma parcelas dos beneficiários + lançamentos IR/ISS/PIS/COFINS (parametrizáveis)
+- [x] Boleto = **valor líquido**
+- [x] Modelo implementado: ver [fatura-pj.md](fatura-pj.md)
 
 ### Implicação
 
-- **1º go-live: priorizar PF**
-- PJ/impostos: fase seguinte (estrutura de lançamentos fiscais na fatura/cobrança)
+- PF e PJ coexistem; PJ usa `faturas` + `fatura_lancamentos`
+- Config por cliente em `clientes.config.pj`
 
 ---
 

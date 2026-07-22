@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CobrancaController;
 use App\Http\Controllers\Api\ContratoController;
 use App\Http\Controllers\Api\ElegibilidadeController;
+use App\Http\Controllers\Api\FaturaController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ParcelaController;
 use App\Http\Middleware\AuthenticateSigoweb;
@@ -27,6 +28,11 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/cobrancas/{id}/liquidar', [CobrancaController::class, 'liquidar']);
 
     Route::post('/parcelas/abrir-exigiveis', [ParcelaController::class, 'abrirExigiveis']);
+
+    Route::get('/faturas', [FaturaController::class, 'index']);
+    Route::post('/faturas', [FaturaController::class, 'store']);
+    Route::get('/faturas/{id}', [FaturaController::class, 'show']);
+    Route::post('/faturas/{id}/cobranca', [FaturaController::class, 'emitirCobranca']);
 
     Route::get('/elegibilidade', ElegibilidadeController::class);
 });

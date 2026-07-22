@@ -30,6 +30,37 @@ class ClienteConfig
     }
 
     /**
+     * @return list<array<string, mixed>>
+     */
+    public static function pjLancamentos(Cliente $cliente): array
+    {
+        $itens = data_get($cliente->config, 'pj.lancamentos', self::padraoSerido()['pj']['lancamentos']);
+
+        return collect($itens)
+            ->filter(fn ($i) => ($i['ativo'] ?? true) === true)
+            ->sortBy('ordem')
+            ->values()
+            ->all();
+    }
+
+    public static function pjBoletoUsaValor(Cliente $cliente): string
+    {
+        $v = data_get($cliente->config, 'pj.boleto_usa_valor', 'liquido');
+
+        return in_array($v, ['liquido', 'bruto'], true) ? $v : 'liquido';
+    }
+
+    public static function pjDiaVencimentoPadrao(Cliente $cliente): int
+    {
+        return max(1, min(28, (int) data_get($cliente->config, 'pj.dia_vencimento_padrao', 10)));
+    }
+
+    public static function pjBloquearBeneficiariosSeEmpresaInadimplente(Cliente $cliente): bool
+    {
+        return (bool) data_get($cliente->config, 'pj.bloquear_beneficiarios_se_empresa_inadimplente', true);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function padraoSerido(): array
@@ -45,6 +76,54 @@ class ClienteConfig
             'bancario' => [
                 'banco' => 'sicredi',
                 'meios' => ['boleto', 'pix'],
+            ],
+            'pj' => [
+                'ciclo' => 'mensal',
+                'boleto_usa_valor' => 'liquido',
+                'dia_vencimento_padrao' => 10,
+                'bloquear_beneficiarios_se_empresa_inadimplente' => true,
+                'lancamentos' => [
+                    [
+                        'codigo' => 'mensalidades',
+                        'descricao' => 'Mensalidades',
+                        'natureza' => 'base',
+                        'origem' => 'soma_parcelas',
+                        'ativo' => true,
+                        'ordem' => 1,
+                    ],
+                    [
+                        'codigo' => 'ir',
+                        'descricao' => 'IR',
+                        'natureza' => 'retencao',
+                        'origem' => 'manual',
+                        'ativo' => true,
+                        'ordem' => 2,
+                    ],
+                    [
+                        'codigo' => 'iss',
+                        'descricao' => 'ISS',
+                        'natureza' => 'retencao',
+                        'origem' => 'manual',
+                        'ativo' => true,
+                        'ordem' => 3,
+                    ],
+                    [
+                        'codigo' => 'pis',
+                        'descricao' => 'PIS',
+                        'natureza' => 'retencao',
+                        'origem' => 'manual',
+                        'ativo' => false,
+                        'ordem' => 4,
+                    ],
+                    [
+                        'codigo' => 'cofins',
+                        'descricao' => 'COFINS',
+                        'natureza' => 'retencao',
+                        'origem' => 'manual',
+                        'ativo' => false,
+                        'ordem' => 5,
+                    ],
+                ],
             ],
         ];
     }

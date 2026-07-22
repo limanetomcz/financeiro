@@ -48,4 +48,9 @@ class Parcela extends Model
         return $this->belongsToMany(Cobranca::class, 'cobranca_parcela')
             ->withPivot('valor_alocado');
     }
+
+    public function faturas(): BelongsToMany
+    {
+        return $this->belongsToMany(Fatura::class, 'fatura_parcela');
+    }
 }
