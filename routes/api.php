@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ElegibilidadeController;
 use App\Http\Controllers\Api\FaturaController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ParcelaController;
+use App\Http\Controllers\Api\SituacaoFinanceiraController;
 use App\Http\Middleware\AuthenticateSigoweb;
 use Illuminate\Support\Facades\Route;
 
@@ -35,4 +36,7 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/faturas/{id}/cobranca', [FaturaController::class, 'emitirCobranca']);
 
     Route::get('/elegibilidade', ElegibilidadeController::class);
+
+    /** Resumo financeiro do contratante (Sigoweb). */
+    Route::get('/financeiro', SituacaoFinanceiraController::class);
 });

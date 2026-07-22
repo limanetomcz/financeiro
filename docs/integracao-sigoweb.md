@@ -70,6 +70,17 @@ Não replicar senha nem cadastro completo de usuários do Sigoweb no MVP — o t
 - Mapa de permissões Financeiro (quem pode baixar, emitir consolidada, etc.)
 - Logout/invalidação alinhada
 
+## Endpoint de situação financeira (Sigoweb)
+
+```http
+GET /api/v1/financeiro?chave_sigoweb={codigo_benef_ou_empresa}
+Authorization: Bearer {jwt}
+```
+
+Retorna: contratante, elegibilidade (pode atender?), contratos, parcelas em aberto/vencidas, faturas PJ em aberto e `saldo_em_aberto`.
+
+Só elegibilidade (mais leve): `GET /api/v1/elegibilidade?chave_sigoweb=...`
+
 ## Variáveis de ambiente
 
 ```env

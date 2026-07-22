@@ -135,6 +135,7 @@ O token precisa trazer a cooperativa (`par_coop`, ex. `112`) para o Financeiro r
 | GET/POST | `/faturas` | sim (PJ) |
 | POST | `/faturas/{id}/cobranca` | sim |
 | GET | `/elegibilidade?chave_sigoweb=` | sim |
+| GET | `/financeiro?chave_sigoweb=` | sim (resumo para Sigoweb) |
 
 Comando útil:
 
