@@ -62,6 +62,7 @@ class FaturaPjTest extends TestCase
             ],
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
+            'chave_plano_sigoweb' => 'PLANO-PJ',
             'valor_total' => 1200,
             'quantidade_parcelas' => 12,
             'primeiro_vencimento' => '2026-01-10',

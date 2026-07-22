@@ -47,6 +47,7 @@ class AuthenticateSigoweb
 
         ClienteContext::set($cliente, [
             'login' => $payload['login'] ?? $payload['sub'] ?? null,
+            'nome' => $payload['nome'] ?? $payload['usu_nome'] ?? null,
             'tipo_acesso' => $payload['tipo_acesso'] ?? null,
             'payload' => $payload,
         ]);

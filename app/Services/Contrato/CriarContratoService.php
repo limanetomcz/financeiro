@@ -7,6 +7,7 @@ use App\Enums\PerfilPagamento;
 use App\Enums\StatusContrato;
 use App\Enums\StatusParcela;
 use App\Enums\TipoContratante;
+use App\Exceptions\DominioException;
 use App\Models\Contratante;
 use App\Models\Contrato;
 use App\Models\Parcela;
@@ -25,7 +26,7 @@ class CriarContratoService
      *   vigencia_fim: string,
      *   valor_total: float|string,
      *   quantidade_parcelas?: int,
-     *   chave_plano_sigoweb?: ?string,
+     *   chave_plano_sigoweb: string,
      *   codigo?: ?string,
      *   renovado_de_contrato_id?: ?string,
      *   primeiro_vencimento?: ?string,
@@ -37,6 +38,11 @@ class CriarContratoService
      */
     public function executar(array $dados): Contrato
     {
+        $plano = trim((string) ($dados['chave_plano_sigoweb'] ?? ''));
+        if ($plano === '') {
+            throw new DominioException('Informe o plano (chave_plano_sigoweb).');
+        }
+
         $perfil = PerfilPagamento::from(
             $dados['perfil_pagamento'] ?? PerfilPagamento::BoletoParcelado->value
         );
@@ -57,8 +63,10 @@ class CriarContratoService
         }
 
         $jaPago = (bool) ($dados['ja_pago'] ?? false);
+        $inicio = Carbon::parse($dados['vigencia_inicio'])->toDateString();
+        $fim = Carbon::parse($dados['vigencia_fim'])->toDateString();
 
-        return DB::transaction(function () use ($dados, $qtd, $valorTotal, $perfil, $modoEmissao, $jaPago) {
+        return DB::transaction(function () use ($dados, $qtd, $valorTotal, $perfil, $modoEmissao, $jaPago, $plano, $inicio, $fim) {
             $cliente = ClienteContext::get();
             $contratanteDados = $dados['contratante'];
             $tipo = TipoContratante::from($contratanteDados['tipo']);
@@ -75,16 +83,23 @@ class CriarContratoService
                 ]
             );
 
+            $this->garantirSemSobreposicaoMesmoPlano(
+                $contratante->id,
+                $plano,
+                $inicio,
+                $fim
+            );
+
             $contrato = Contrato::query()->create([
                 'contratante_id' => $contratante->id,
                 'tipo' => $tipo->value,
                 'perfil_pagamento' => $perfil,
                 'modo_emissao' => $modoEmissao,
                 'renovado_de_contrato_id' => $dados['renovado_de_contrato_id'] ?? null,
-                'chave_plano_sigoweb' => $dados['chave_plano_sigoweb'] ?? null,
+                'chave_plano_sigoweb' => $plano,
                 'codigo' => $dados['codigo'] ?? null,
-                'vigencia_inicio' => $dados['vigencia_inicio'],
-                'vigencia_fim' => $dados['vigencia_fim'],
+                'vigencia_inicio' => $inicio,
+                'vigencia_fim' => $fim,
                 'valor_total' => $valorTotal,
                 'quantidade_parcelas' => $qtd,
                 'status' => StatusContrato::Ativo,
@@ -93,7 +108,7 @@ class CriarContratoService
             $valores = $this->ratearValor($valorTotal, $qtd);
             $primeiroVencimento = Carbon::parse(
                 $dados['primeiro_vencimento']
-                    ?? ($perfil === PerfilPagamento::AVista ? $dados['vigencia_fim'] : $dados['vigencia_inicio'])
+                    ?? ($perfil === PerfilPagamento::AVista ? $fim : $inicio)
             );
             $hoje = Carbon::today();
 
@@ -120,6 +135,44 @@ class CriarContratoService
 
             return $contrato->load(['contratante', 'parcelas']);
         });
+    }
+
+    /**
+     * Mesma pessoa (contratante) + mesmo plano + vigência sobreposta = bloqueado.
+     * Planos diferentes no mesmo período são permitidos (CPF com mais de um contrato).
+     */
+    private function garantirSemSobreposicaoMesmoPlano(
+        string $contratanteId,
+        string $plano,
+        string $inicio,
+        string $fim
+    ): void {
+        $conflito = Contrato::query()
+            ->where('contratante_id', $contratanteId)
+            ->where('chave_plano_sigoweb', $plano)
+            ->whereIn('status', [
+                StatusContrato::Ativo->value,
+                StatusContrato::Suspenso->value,
+                StatusContrato::Rascunho->value,
+            ])
+            ->whereDate('vigencia_inicio', '<=', $fim)
+            ->whereDate('vigencia_fim', '>=', $inicio)
+            ->orderByDesc('vigencia_inicio')
+            ->first();
+
+        if (! $conflito) {
+            return;
+        }
+
+        throw new DominioException(
+            sprintf(
+                'Já existe financeiro ativo para este contratante no plano %s no período %s a %s (contrato %s).',
+                $plano,
+                $conflito->vigencia_inicio->format('d/m/Y'),
+                $conflito->vigencia_fim->format('d/m/Y'),
+                $conflito->id
+            )
+        );
     }
 
     /**

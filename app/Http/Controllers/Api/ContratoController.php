@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\DominioException;
 use App\Http\Controllers\Controller;
 use App\Models\Contrato;
 use App\Services\Contrato\CriarContratoService;
@@ -40,7 +41,7 @@ class ContratoController extends Controller
             'vigencia_fim' => ['required', 'date', 'after_or_equal:vigencia_inicio'],
             'valor_total' => ['required', 'numeric', 'gt:0'],
             'quantidade_parcelas' => ['nullable', 'integer', 'min:1', 'max:48'],
-            'chave_plano_sigoweb' => ['nullable', 'string', 'max:64'],
+            'chave_plano_sigoweb' => ['required', 'string', 'max:64'],
             'codigo' => ['nullable', 'string', 'max:40'],
             'renovado_de_contrato_id' => ['nullable', 'uuid', 'exists:contratos,id'],
             'primeiro_vencimento' => ['nullable', 'date'],
@@ -50,7 +51,11 @@ class ContratoController extends Controller
             'ja_pago' => ['nullable', 'boolean'],
         ]);
 
-        $contrato = $service->executar($dados);
+        try {
+            $contrato = $service->executar($dados);
+        } catch (DominioException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json($contrato, 201);
     }

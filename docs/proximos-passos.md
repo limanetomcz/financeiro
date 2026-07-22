@@ -12,6 +12,10 @@ Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
 
 ## Fila imediata
 
+0. ~~URL Financeiro no Sigoweb (`.env` + login → `localStorage.url_api_financeiro`)~~ — redes Docker separadas OK  
+0b. ~~Tela lab Sigoweb~~ — `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php` (CPF → gerar contrato 12x → listar)  
+0c. ~~Locais de pagamento Seridó~~ — canal ≠ taxa (`locais_pagamento` + `taxas_local_pagamento`), seed 22 `LOC_CODIGO`, liquidar com snapshot  
+0d. ~~Baixa / retirar baixa no lab~~ — `POST /parcelas/{id}/baixar|retirar-baixa`, auditoria de operador nas colunas (Fusca desligado)  
 1. **Retorno CNAB Sicredi (`.CRT`)**  
    Baixa automática → liquidar cobrança / marcar `enviado_remessa = 2` (registrado).  
    Pedir fonte Oracle de retorno/baixa se ainda não tiver (`tb_baixar_arquivo_banco` / procedure de retorno).
@@ -29,10 +33,10 @@ Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
    Dados Seridó (`112`) + reconciliação com `tb_mensalidade` / faturas.
 
 6. **Integração UI Sigoweb**  
-   Tela de remessa/financeiro apontando para API do app `financeiro` (abandonar geração no `sigo-laravel`).
+   Telas chamando `localStorage.url_api_financeiro` + Bearer JWT (abandonar geração no `sigo-laravel`).
 
 7. **Cutover piloto**  
-   `usa_financeiro_novo = true` na cooperativa `112` + `SIGOWEB_JWT_SECRET` alinhado.
+   `usa_financeiro_novo = true` na cooperativa `112` + secrets alinhados.
 
 ## Fora do piloto (não priorizar agora)
 

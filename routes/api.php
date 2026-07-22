@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\CobrancaController;
 use App\Http\Controllers\Api\ContratoController;
 use App\Http\Controllers\Api\ElegibilidadeController;
 use App\Http\Controllers\Api\FaturaController;
+use App\Http\Controllers\Api\LabController;
+use App\Http\Controllers\Api\LocalPagamentoController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ParcelaController;
 use App\Http\Controllers\Api\RemessaController;
@@ -29,7 +31,17 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::get('/cobrancas/{id}', [CobrancaController::class, 'show']);
     Route::post('/cobrancas/{id}/liquidar', [CobrancaController::class, 'liquidar']);
 
+    Route::get('/locais-pagamento', [LocalPagamentoController::class, 'index']);
+    Route::get('/locais-pagamento/resolver', [LocalPagamentoController::class, 'resolver']);
+    Route::post('/locais-pagamento', [LocalPagamentoController::class, 'store']);
+
+    /** Lab / testes — limpar financeiro do contratante. */
+    Route::delete('/lab/financeiro', [LabController::class, 'limparFinanceiro']);
+
     Route::post('/parcelas/abrir-exigiveis', [ParcelaController::class, 'abrirExigiveis']);
+    Route::get('/parcelas', [ParcelaController::class, 'index']);
+    Route::post('/parcelas/{id}/baixar', [ParcelaController::class, 'baixar']);
+    Route::post('/parcelas/{id}/retirar-baixa', [ParcelaController::class, 'retirarBaixa']);
 
     Route::get('/faturas', [FaturaController::class, 'index']);
     Route::post('/faturas', [FaturaController::class, 'store']);

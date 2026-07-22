@@ -28,11 +28,24 @@ class Cobranca extends Model
         'vencimento',
         'status',
         'meio',
+        'local_pagamento_id',
+        'taxa_local_pagamento_id',
+        'local_pagamento',
+        'local_pagamento_descricao',
+        'taxa_percentual',
+        'valor_taxa',
+        'modalidade',
+        'bandeira',
         'referencia_externa',
         'nosso_numero',
         'numero_registro',
         'data_emissao_boleto',
         'pago_em',
+        'baixado_por',
+        'baixado_por_nome',
+        'baixa_retirada_por',
+        'baixa_retirada_por_nome',
+        'baixa_retirada_em',
     ];
 
     protected function casts(): array
@@ -42,17 +55,30 @@ class Cobranca extends Model
             'valor_juros' => 'decimal:2',
             'valor_multa' => 'decimal:2',
             'valor' => 'decimal:2',
+            'taxa_percentual' => 'decimal:4',
+            'valor_taxa' => 'decimal:2',
             'vencimento' => 'date',
             'data_emissao_boleto' => 'date',
             'status' => StatusCobranca::class,
             'tipo' => TipoCobranca::class,
             'pago_em' => 'datetime',
+            'baixa_retirada_em' => 'datetime',
         ];
     }
 
     public function contratante(): BelongsTo
     {
         return $this->belongsTo(Contratante::class);
+    }
+
+    public function localPagamento(): BelongsTo
+    {
+        return $this->belongsTo(LocalPagamento::class);
+    }
+
+    public function taxaLocalPagamento(): BelongsTo
+    {
+        return $this->belongsTo(TaxaLocalPagamento::class);
     }
 
     public function parcelas(): BelongsToMany

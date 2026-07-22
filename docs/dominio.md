@@ -28,8 +28,12 @@ Venda com vigência (ex. anual), renovação explícita via novo contrato (`reno
 
 | Campo | Uso |
 |-------|-----|
+| `chave_plano_sigoweb` | Código do plano no Sigoweb (**obrigatório**) |
 | `perfil_pagamento` | `boleto_parcelado` \| `cartao_parcelado` \| `a_vista` |
 | `modo_emissao` | `imediata` (CR no ato) \| `escalonada` (CR mês a mês) |
+
+**Unicidade:** mesmo contratante + mesmo plano + vigência sobreposta → bloqueado  
+(status `ativo`/`suspenso`/`rascunho`). Planos diferentes no mesmo período são permitidos.
 
 | Status | Significado |
 |--------|-------------|
@@ -74,6 +78,27 @@ Juros/multa são **opcionais** — o operador decide se cobra (padrão 0).
 
 Regra: parcela não pode estar em duas cobranças **abertas** ao mesmo tempo.
 
+### Local de pagamento (por tenant)
+
+Separação **canal ≠ tarifa** (o Oracle misturava os dois em `tb_localpagamento`):
+
+| Tabela | Papel |
+|--------|--------|
+| `locais_pagamento` | Canal: Uniodonto, Sicredi, Caixa, PIX, Itaú cartão… |
+| `taxas_local_pagamento` | Condição/tarifa do cartão (modalidade + bandeira + %), com `codigo_legado` = `LOC_CODIGO` |
+
+Catálogo **por cooperativa** (`cliente_id`).  
+Na baixa, a cobrança guarda snapshot: código, descrição, `taxa_percentual`, `valor_taxa`, modalidade, bandeira.  
+Também grava `baixado_por` / `baixado_por_nome` (e, no estorno, `baixa_retirada_por*`).  
+Fusca fica desligado (`FINANCEIRO_AUDITORIA_FUSCA=false`) até sair do lab.
+
+APIs:
+- `GET /api/v1/locais-pagamento?com_taxas=1`
+- `GET /api/v1/locais-pagamento/resolver?codigo_legado=61`
+- `POST /api/v1/parcelas/{id}/baixar` — `codigo_legado` **ou** `local_pagamento_codigo` (+ `taxa_id` se cartão)
+- `POST /api/v1/parcelas/{id}/retirar-baixa`
+- `POST /api/v1/cobrancas/{id}/liquidar` — baixa da cobrança (mesmo snapshot/operador)
+
 ### Elegibilidade
 
 Consulta derivada: o contratante pode usar o plano?
@@ -87,7 +112,7 @@ Regra fina da Seridó será ajustada no discovery.
 |----------|-------|----------|
 | Cliente | `chave_sigoweb` | cooperativa (`par_coop`) |
 | Contratante | `chave_sigoweb` | beneficiário/empresa |
-| Contrato | `chave_plano_sigoweb` | plano (opcional) |
+| Contrato | `chave_plano_sigoweb` | plano (obrigatório) |
 
 ## APIs iniciais
 
@@ -98,6 +123,8 @@ Regra fina da Seridó será ajustada no discovery.
 | POST | `/api/v1/contratos` | Cria contrato + parcelas |
 | GET | `/api/v1/contratos/{id}` | Detalhe |
 | POST | `/api/v1/cobrancas/consolidadas` | Emite cobrança consolidada (`valor_juros`/`valor_multa` opcionais) |
-| POST | `/api/v1/cobrancas/{id}/liquidar` | Baixa cobrança + parcelas |
+| POST | `/api/v1/cobrancas/{id}/liquidar` | Baixa (+ `codigo_legado` / local + taxa) |
+| GET | `/api/v1/locais-pagamento` | Canais (+ taxas aninhadas) |
+| GET | `/api/v1/locais-pagamento/resolver` | Resolve `LOC_CODIGO` legado |
 | POST | `/api/v1/parcelas/abrir-exigiveis` | Promove previstas → abertas |
 | GET | `/api/v1/elegibilidade` | `?chave_sigoweb=` pode atender? (params no Cliente) |

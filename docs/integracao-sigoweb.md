@@ -70,7 +70,33 @@ Não replicar senha nem cadastro completo de usuários do Sigoweb no MVP — o t
 - Mapa de permissões Financeiro (quem pode baixar, emitir consolidada, etc.)
 - Logout/invalidação alinhada
 
-## Endpoint de situação financeira (Sigoweb)
+## URL do Financeiro no Sigoweb
+
+No `.env` do Sigoweb:
+
+```env
+FINANCEIRO_URL=http://localhost:8085
+FINANCEIRO_URL_INTERNAL=http://host.docker.internal:8085
+```
+
+| Variável | Uso |
+|----------|-----|
+| `FINANCEIRO_URL` | Browser / JS (`localStorage.url_api_financeiro` no login) |
+| `FINANCEIRO_URL_INTERNAL` | PHP no container php74 → host (não compartilham rede Docker) |
+
+Em produção: ambos apontam para a URL pública do Financeiro (outro servidor). `INTERNAL` pode ficar vazio.
+
+PHP: `Banco::getUrlFinanceiroApi()` / `getUrlFinanceiroApiForJavaScript()`.
+
+JS:
+```js
+const base = localStorage.getItem('url_api_financeiro'); // ex. http://localhost:8085
+fetch(`${base}/api/v1/financeiro?chave_sigoweb=...`, {
+  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+});
+```
+
+Redes Docker: `financeiro_financeiro` ≠ `php74_server` — correto para espelhar produção.
 
 ```http
 GET /api/v1/financeiro?chave_sigoweb={codigo_benef_ou_empresa}

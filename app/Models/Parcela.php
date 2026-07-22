@@ -25,6 +25,11 @@ class Parcela extends Model
         'valor',
         'status',
         'pago_em',
+        'baixado_por',
+        'baixado_por_nome',
+        'baixa_retirada_por',
+        'baixa_retirada_por_nome',
+        'baixa_retirada_em',
     ];
 
     protected function casts(): array
@@ -35,6 +40,7 @@ class Parcela extends Model
             'valor' => 'decimal:2',
             'status' => StatusParcela::class,
             'pago_em' => 'datetime',
+            'baixa_retirada_em' => 'datetime',
         ];
     }
 

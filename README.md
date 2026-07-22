@@ -255,13 +255,14 @@ Ao retomar: diga *“relembra os próximos passos”*.
 
 Resumo da fila:
 
-1. Retorno CNAB Sicredi (`.CRT`) + baixa
-2. Registro boleto + PIX Sicredi
-3. Endereço real do pagador / sync Sigoweb
-4. Validar DV com fonte `fun_calculodvmodulo11` (se tiver)
-5. Migração de dados Oracle → MySQL + reconciliação
-6. UI Sigoweb consumindo API do Financeiro
-7. Cutover `112` / `usa_financeiro_novo` + `SIGOWEB_JWT_SECRET`
+- Redes Docker separadas (`financeiro_*` ≠ `php74_*`); comunicação só via HTTP (`FINANCEIRO_URL`)
+- Retorno CNAB Sicredi (`.CRT`) + baixa
+- Registro boleto + PIX Sicredi
+- Endereço real do pagador / sync Sigoweb
+- Validar DV com fonte `fun_calculodvmodulo11` (se tiver)
+- Migração de dados Oracle → MySQL + reconciliação
+- UI Sigoweb consumindo API do Financeiro (`url_api_financeiro` no login)
+- Cutover `112` / `usa_financeiro_novo` + `SIGOWEB_JWT_SECRET`
 
 Infra já preparada: **Redis + filas + worker + scheduler** (ver [docs/filas-redis.md](docs/filas-redis.md)).
 

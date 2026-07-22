@@ -44,12 +44,15 @@ class CobrancaController extends Controller
     {
         $dados = $request->validate([
             'pago_em' => ['nullable', 'date'],
+            'local_pagamento_codigo' => ['nullable', 'string', 'max:10'],
+            'codigo_legado' => ['nullable', 'string', 'max:10'],
+            'taxa_id' => ['nullable', 'uuid'],
         ]);
 
         $cobranca = Cobranca::query()->findOrFail($id);
 
         try {
-            $cobranca = $service->executar($cobranca, $dados['pago_em'] ?? null);
+            $cobranca = $service->executar($cobranca, $dados['pago_em'] ?? null, $dados);
         } catch (DominioException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
