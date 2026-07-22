@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\LocalPagamentoController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ParcelaController;
 use App\Http\Controllers\Api\RemessaController;
+use App\Http\Controllers\Api\RetornoBancarioController;
 use App\Http\Controllers\Api\SituacaoFinanceiraController;
 use App\Http\Middleware\AuthenticateSigoweb;
 use Illuminate\Support\Facades\Route;
@@ -59,4 +60,9 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/remessas', [RemessaController::class, 'store']);
     Route::get('/remessas/{id}', [RemessaController::class, 'show']);
     Route::get('/remessas/{id}/download', [RemessaController::class, 'download']);
+
+    /** Retorno CNAB Sicredi (.CRT). */
+    Route::get('/retornos', [RetornoBancarioController::class, 'index']);
+    Route::post('/retornos', [RetornoBancarioController::class, 'store']);
+    Route::get('/retornos/{id}', [RetornoBancarioController::class, 'show']);
 });

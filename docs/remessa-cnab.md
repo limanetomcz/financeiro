@@ -155,10 +155,40 @@ DV: `CalculoDvModulo11` (pesos 2..9). Se o fonte de `fun_calculodvmodulo11` dive
 | `view_remessa_boletos` | Regras portadas para fontes (M/MA/F + 06) |
 | `Fun_GerarNumRegistroUnicred` | Portada (`SicrediNossoNumeroGenerator`) |
 | `fun_calculodvmodulo11` | Portada padrão; validar com fonte Oracle se possível |
-| Retorno CNAB / `tb_baixar_arquivo_banco` tipo `02` | Próximo (alimenta `enviado_remessa=2`) |
+| Retorno CNAB / `tb_baixar_arquivo_banco` tipo `02` | Parser + liquidação Sicredi 240 (T/U) — validar códigos com `.CRT` real Seridó |
 | Endereço real do pagador | Placeholder até sync Sigoweb |
 | BA / DC | Fora do piloto |
 
 ## Status da remessa
 
 `pendente` → `processando` → `concluida` | `vazia` | `falha`
+
+## Retorno CNAB Sicredi (`.CRT`)
+
+```http
+POST /api/v1/retornos
+Authorization: Bearer {jwt}
+Content-Type: multipart/form-data
+
+arquivo: (file .CRT)
+```
+
+```http
+GET /api/v1/retornos
+GET /api/v1/retornos/{id}
+```
+
+Parser: `SicrediCnab240RetornoParser` (posições do legado `arquivoSicredi200Colunas`).
+
+| Código movimento (seg. T) | Ação |
+|---------------------------|------|
+| `02` | Confirma entrada → `remessa_itens.enviado_remessa = 2` |
+| `06`, `17` | Liquida cobrança (local Sicredi `7`); juros do seg. U quando houver |
+| `09`, `10` | Exclusão/baixa pelo banco → cancela cobrança e libera parcelas |
+| `03` | Registra rejeição |
+| `28` | Tarifa/custas — registra sem liquidar |
+| outros | Registra sem ação automática |
+
+Validado com `.CRT` reais Seridó:
+- `08012930` → 70×02, 44×06, 44×28
+- `08012722` → 6×09 (exclusão Kandice), 9×06 (mensalidades), 9×28 — bate com relatório Sigoweb

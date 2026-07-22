@@ -56,7 +56,7 @@ class GerarRemessaService
     public function processar(Remessa $remessa): Remessa
     {
         $cliente = Cliente::query()->findOrFail($remessa->cliente_id);
-        ClienteContext::set($cliente);
+        ClienteContext::set($cliente, ClienteContext::usuario());
 
         $remessa->update([
             'status' => StatusRemessa::Processando,

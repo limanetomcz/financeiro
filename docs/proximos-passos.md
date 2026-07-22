@@ -16,9 +16,8 @@ Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
 0b. ~~Tela lab Sigoweb~~ — `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php` (CPF → gerar contrato 12x → listar)  
 0c. ~~Locais de pagamento Seridó~~ — canal ≠ taxa (`locais_pagamento` + `taxas_local_pagamento`), seed 22 `LOC_CODIGO`, liquidar com snapshot  
 0d. ~~Baixa / retirar baixa no lab~~ — `POST /parcelas/{id}/baixar|retirar-baixa`, auditoria de operador nas colunas (Fusca desligado)  
-1. **Retorno CNAB Sicredi (`.CRT`)**  
-   Baixa automática → liquidar cobrança / marcar `enviado_remessa = 2` (registrado).  
-   Pedir fonte Oracle de retorno/baixa se ainda não tiver (`tb_baixar_arquivo_banco` / procedure de retorno).
+1. ~~**Retorno CNAB Sicredi (`.CRT`)**~~ — esqueleto + parser T/U + liquidação/confirmação (fixture). **Falta validar com arquivo real da Seridó.**  
+   Baixa automática → liquidar cobrança / marcar `enviado_remessa = 2` (registrado).
 
 2. **Registro de boleto + PIX Sicredi**  
    Adaptador API do banco (além do arquivo remessa). Discovery: PIX em seguida ao boleto/CNAB.
