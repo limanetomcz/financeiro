@@ -89,7 +89,7 @@ Contrato cria as N parcelas de uma vez:
 
 | Procedure / função | Uso | Fonte entregue? |
 |--------------------|-----|-----------------|
-| Remessa/retorno Sicredi (nomes) | Geração arquivo / baixa | view mapeada em fontes; falta Fun_GerarNumRegistro + retorno CNAB |
+| Remessa/retorno Sicredi (nomes) | Geração arquivo / baixa | remessa + Fun_Gerar ok; falta retorno CNAB / procedure de baixa |
 | Geração mensalidade (se usada na 112) | Mapear para parcelas | pendente |
 
 ---
