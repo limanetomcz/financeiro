@@ -40,6 +40,7 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
 
     Route::post('/parcelas/abrir-exigiveis', [ParcelaController::class, 'abrirExigiveis']);
     Route::get('/parcelas', [ParcelaController::class, 'index']);
+    Route::post('/parcelas/{id}/calcular-juros', [ParcelaController::class, 'calcularJuros']);
     Route::post('/parcelas/{id}/baixar', [ParcelaController::class, 'baixar']);
     Route::post('/parcelas/{id}/retirar-baixa', [ParcelaController::class, 'retirarBaixa']);
 

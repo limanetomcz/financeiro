@@ -21,6 +21,7 @@ class BaixarParcelaService
     public function __construct(
         private readonly EmitirCobrancaConsolidadaService $emitirCobranca,
         private readonly LiquidarCobrancaService $liquidarCobranca,
+        private readonly CalcularJurosMultaService $calcularJuros,
         private readonly AuditoriaFinanceira $auditoria,
     ) {}
 
@@ -30,14 +31,18 @@ class BaixarParcelaService
      *   local_pagamento_codigo?: ?string,
      *   codigo_legado?: ?string,
      *   taxa_id?: ?string,
+     *   aplicar_encargos?: bool,
+     *   valor_juros?: float|int|string|null,
+     *   valor_multa?: float|int|string|null,
      *   operador?: array{login?: string, nome?: ?string}
      * }  $opcoes
      */
     public function executar(string $parcelaId, array $opcoes = []): Cobranca
     {
         $operador = OperadorAtual::resolver($opcoes['operador'] ?? null);
+        $pagoEm = $opcoes['pago_em'] ?? now()->toDateString();
 
-        return DB::transaction(function () use ($parcelaId, $opcoes, $operador) {
+        return DB::transaction(function () use ($parcelaId, $opcoes, $operador, $pagoEm) {
             $parcela = Parcela::query()->with('contrato')->whereKey($parcelaId)->lockForUpdate()->firstOrFail();
 
             if ($parcela->status === StatusParcela::Paga) {
@@ -70,7 +75,10 @@ class BaixarParcelaService
                 );
             }
 
-            $cobranca = $this->liquidarCobranca->executar($cobranca, $opcoes['pago_em'] ?? null, [
+            $this->aplicarEncargosNaCobranca($cobranca, $parcela, (string) $pagoEm, $opcoes);
+            $cobranca->refresh();
+
+            $cobranca = $this->liquidarCobranca->executar($cobranca, $pagoEm, [
                 'codigo_legado' => $opcoes['codigo_legado'] ?? null,
                 'local_pagamento_codigo' => $opcoes['local_pagamento_codigo'] ?? null,
                 'taxa_id' => $opcoes['taxa_id'] ?? null,
@@ -82,10 +90,57 @@ class BaixarParcelaService
                 'cobranca_id' => $cobranca->id,
                 'operador' => $operador,
                 'local_pagamento' => $cobranca->local_pagamento,
+                'valor_juros' => $cobranca->valor_juros,
+                'valor_multa' => $cobranca->valor_multa,
             ]);
 
             return $cobranca;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $opcoes
+     */
+    private function aplicarEncargosNaCobranca(
+        Cobranca $cobranca,
+        Parcela $parcela,
+        string $pagoEm,
+        array $opcoes
+    ): void {
+        $aplicar = array_key_exists('aplicar_encargos', $opcoes)
+            ? (bool) $opcoes['aplicar_encargos']
+            : true;
+
+        $calc = $this->calcularJuros->calcular(
+            (float) $parcela->valor,
+            $parcela->vencimento->toDateString(),
+            $pagoEm,
+            ! $aplicar
+        );
+
+        if (! $aplicar || ! $calc['atrasada'] || $calc['carencia_fds_aplicada']) {
+            $juros = 0.0;
+            $multa = 0.0;
+        } else {
+            $juros = array_key_exists('valor_juros', $opcoes) && $opcoes['valor_juros'] !== null
+                ? round((float) $opcoes['valor_juros'], 2)
+                : $calc['valor_juros'];
+            $multa = array_key_exists('valor_multa', $opcoes) && $opcoes['valor_multa'] !== null
+                ? round((float) $opcoes['valor_multa'], 2)
+                : $calc['valor_multa'];
+        }
+
+        if ($juros < 0 || $multa < 0) {
+            throw new DominioException('Juros e multa não podem ser negativos.');
+        }
+
+        $principal = round((float) $cobranca->valor_principal, 2);
+
+        $cobranca->update([
+            'valor_juros' => $juros,
+            'valor_multa' => $multa,
+            'valor' => round($principal + $juros + $multa, 2),
+        ]);
     }
 
     private function cobrancaAbertaDaParcela(Parcela $parcela): ?Cobranca

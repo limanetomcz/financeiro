@@ -54,6 +54,8 @@ class ListarParcelasContratanteTest extends TestCase
         $this->assertCount(12, $resultado['parcelas']);
         $this->assertArrayHasKey('local_pagamento', $resultado['parcelas'][0]);
         $this->assertArrayHasKey('status', $resultado['parcelas'][0]);
+        $this->assertArrayHasKey('beneficiarios', $resultado['parcelas'][0]);
+        $this->assertIsArray($resultado['parcelas'][0]['beneficiarios']);
 
         ClienteContext::clear();
         Carbon::setTestNow();

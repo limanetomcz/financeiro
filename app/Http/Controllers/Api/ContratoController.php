@@ -14,7 +14,7 @@ class ContratoController extends Controller
     public function index(): JsonResponse
     {
         $contratos = Contrato::query()
-            ->with(['contratante', 'parcelas'])
+            ->with(['contratante', 'beneficiarios', 'parcelas'])
             ->latest()
             ->paginate(20);
 
@@ -24,7 +24,7 @@ class ContratoController extends Controller
     public function show(string $id): JsonResponse
     {
         $contrato = Contrato::query()
-            ->with(['contratante', 'parcelas'])
+            ->with(['contratante', 'beneficiarios', 'parcelas.beneficiarios'])
             ->findOrFail($id);
 
         return response()->json($contrato);
@@ -39,9 +39,18 @@ class ContratoController extends Controller
             'contratante.documento' => ['nullable', 'string', 'max:20'],
             'vigencia_inicio' => ['required', 'date'],
             'vigencia_fim' => ['required', 'date', 'after_or_equal:vigencia_inicio'],
-            'valor_total' => ['required', 'numeric', 'gt:0'],
+            'valor_total' => ['nullable', 'numeric', 'gt:0'],
             'quantidade_parcelas' => ['nullable', 'integer', 'min:1', 'max:48'],
             'chave_plano_sigoweb' => ['required', 'string', 'max:64'],
+            'chave_familia_sigoweb' => ['nullable', 'string', 'max:20'],
+            'beneficiarios' => ['nullable', 'array', 'min:1'],
+            'beneficiarios.*.chave_sigoweb' => ['required_with:beneficiarios', 'string', 'max:64'],
+            'beneficiarios.*.nome' => ['required_with:beneficiarios', 'string', 'max:255'],
+            'beneficiarios.*.valor_mensal' => ['required_with:beneficiarios', 'numeric', 'min:0'],
+            'beneficiarios.*.documento' => ['nullable', 'string', 'max:20'],
+            'beneficiarios.*.tipo_dependencia' => ['nullable', 'in:titular,dependente'],
+            'beneficiarios.*.tipodep_sigoweb' => ['nullable', 'string', 'max:10'],
+            'beneficiarios.*.chave_depend_sigoweb' => ['nullable', 'string', 'max:10'],
             'codigo' => ['nullable', 'string', 'max:40'],
             'renovado_de_contrato_id' => ['nullable', 'uuid', 'exists:contratos,id'],
             'primeiro_vencimento' => ['nullable', 'date'],
@@ -50,6 +59,12 @@ class ContratoController extends Controller
             'modo_geracao' => ['nullable', 'in:mensal_exigivel,todas_abertas'],
             'ja_pago' => ['nullable', 'boolean'],
         ]);
+
+        if (empty($dados['beneficiarios']) && empty($dados['valor_total'])) {
+            return response()->json([
+                'message' => 'Informe beneficiarios (composição da família) ou valor_total.',
+            ], 422);
+        }
 
         try {
             $contrato = $service->executar($dados);

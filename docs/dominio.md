@@ -29,8 +29,15 @@ Venda com vigência (ex. anual), renovação explícita via novo contrato (`reno
 | Campo | Uso |
 |-------|-----|
 | `chave_plano_sigoweb` | Código do plano no Sigoweb (**obrigatório**) |
+| `chave_familia_sigoweb` | Código da família no Sigoweb |
+| `valor_mensal_familia` | Soma dos `valor_mensal` dos integrantes |
+| `valor_total` | `valor_mensal_familia × quantidade_parcelas` |
 | `perfil_pagamento` | `boleto_parcelado` \| `cartao_parcelado` \| `a_vista` |
 | `modo_emissao` | `imediata` (CR no ato) \| `escalonada` (CR mês a mês) |
+
+**Composição da família (DIRF):**  
+`contrato_beneficiarios` guarda cada integrante (carteira, nome, CPF, titular/dependente, **valor mensal**).  
+Em cada parcela, `parcela_beneficiarios` é o snapshot do valor daquele mês (base para DIRF/cliente).
 
 **Unicidade:** mesmo contratante + mesmo plano + vigência sobreposta → bloqueado  
 (status `ativo`/`suspenso`/`rascunho`). Planos diferentes no mesmo período são permitidos.
@@ -74,7 +81,10 @@ Documento de pagamento (boleto, PIX, manual…). Pode ser:
 Pagamento da cobrança liquida todas as parcelas vinculadas.
 
 Campos de valor: `valor_principal` + `valor_juros` + `valor_multa` = `valor`.  
-Juros/multa são **opcionais** — o operador decide se cobra (padrão 0).
+Juros/multa na baixa: port de `FUN_CALCULAR_JUROS_MULTA` — **0,033%/dia** + multa **2%**,  
+carência se vencimento cai FDS e pagamento em até 2 dias (Sáb/Dom/Seg), flag `cobranca.cobrar_multa_juros_pf`.  
+Na baixa usamos a **data de recebimento** (não SYSDATE) para dias/atraso.  
+Operador decide se cobra (`aplicar_encargos`). Preview: `POST /parcelas/{id}/calcular-juros`.
 
 Regra: parcela não pode estar em duas cobranças **abertas** ao mesmo tempo.
 

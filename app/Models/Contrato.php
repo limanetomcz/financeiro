@@ -26,10 +26,12 @@ class Contrato extends Model
         'modo_emissao',
         'renovado_de_contrato_id',
         'chave_plano_sigoweb',
+        'chave_familia_sigoweb',
         'codigo',
         'vigencia_inicio',
         'vigencia_fim',
         'valor_total',
+        'valor_mensal_familia',
         'quantidade_parcelas',
         'status',
     ];
@@ -40,6 +42,7 @@ class Contrato extends Model
             'vigencia_inicio' => 'date',
             'vigencia_fim' => 'date',
             'valor_total' => 'decimal:2',
+            'valor_mensal_familia' => 'decimal:2',
             'status' => StatusContrato::class,
             'perfil_pagamento' => PerfilPagamento::class,
             'modo_emissao' => ModoEmissao::class,
@@ -54,6 +57,11 @@ class Contrato extends Model
     public function renovadoDe(): BelongsTo
     {
         return $this->belongsTo(self::class, 'renovado_de_contrato_id');
+    }
+
+    public function beneficiarios(): HasMany
+    {
+        return $this->hasMany(ContratoBeneficiario::class)->orderBy('ordem');
     }
 
     public function parcelas(): HasMany

@@ -88,6 +88,12 @@ class ClienteConfig
             'parcelas' => [
                 'modo_geracao' => self::MODO_MENSAL_EXIGIVEL,
             ],
+            // Espelha tb_param2.cobrarMultaJuros_PF + hardcodes de FUN_CALCULAR_JUROS_MULTA
+            'cobranca' => [
+                'cobrar_multa_juros_pf' => true,
+                'percentual_juros_dia' => 0.033, // 0,033% a.d. (Oracle)
+                'percentual_multa' => 2.0,
+            ],
             'bancario' => [
                 'banco' => 'sicredi',
                 'codigo_banco' => '748',

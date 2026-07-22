@@ -10,7 +10,9 @@ use App\Enums\TipoContratante;
 use App\Exceptions\DominioException;
 use App\Models\Contratante;
 use App\Models\Contrato;
+use App\Models\ContratoBeneficiario;
 use App\Models\Parcela;
+use App\Models\ParcelaBeneficiario;
 use App\Support\Cliente\ClienteConfig;
 use App\Support\Tenant\ClienteContext;
 use Carbon\Carbon;
@@ -24,9 +26,19 @@ class CriarContratoService
      *   contratante: array{chave_sigoweb: string, tipo: string, nome: string, documento?: ?string},
      *   vigencia_inicio: string,
      *   vigencia_fim: string,
-     *   valor_total: float|string,
+     *   valor_total?: float|string,
      *   quantidade_parcelas?: int,
      *   chave_plano_sigoweb: string,
+     *   chave_familia_sigoweb?: ?string,
+     *   beneficiarios?: list<array{
+     *     chave_sigoweb: string,
+     *     nome: string,
+     *     valor_mensal: float|string,
+     *     documento?: ?string,
+     *     tipo_dependencia?: string,
+     *     tipodep_sigoweb?: ?string,
+     *     chave_depend_sigoweb?: ?string
+     *   }>,
      *   codigo?: ?string,
      *   renovado_de_contrato_id?: ?string,
      *   primeiro_vencimento?: ?string,
@@ -57,7 +69,24 @@ class CriarContratoService
             throw new InvalidArgumentException('quantidade_parcelas deve ser >= 1.');
         }
 
-        $valorTotal = round((float) $dados['valor_total'], 2);
+        $beneficiarios = $this->normalizarBeneficiarios($dados['beneficiarios'] ?? []);
+        $valorMensalFamilia = $this->somaValorMensal($beneficiarios);
+
+        if ($beneficiarios !== []) {
+            $valorTotal = round($valorMensalFamilia * $qtd, 2);
+            if (isset($dados['valor_total'])) {
+                $informado = round((float) $dados['valor_total'], 2);
+                if (abs($informado - $valorTotal) > 0.02) {
+                    throw new DominioException(
+                        "valor_total ({$informado}) diverge da soma da família × parcelas ({$valorTotal})."
+                    );
+                }
+            }
+        } else {
+            $valorTotal = round((float) ($dados['valor_total'] ?? 0), 2);
+            $valorMensalFamilia = $qtd > 0 ? round($valorTotal / $qtd, 2) : $valorTotal;
+        }
+
         if ($valorTotal <= 0) {
             throw new InvalidArgumentException('valor_total deve ser > 0.');
         }
@@ -66,7 +95,19 @@ class CriarContratoService
         $inicio = Carbon::parse($dados['vigencia_inicio'])->toDateString();
         $fim = Carbon::parse($dados['vigencia_fim'])->toDateString();
 
-        return DB::transaction(function () use ($dados, $qtd, $valorTotal, $perfil, $modoEmissao, $jaPago, $plano, $inicio, $fim) {
+        return DB::transaction(function () use (
+            $dados,
+            $qtd,
+            $valorTotal,
+            $valorMensalFamilia,
+            $beneficiarios,
+            $perfil,
+            $modoEmissao,
+            $jaPago,
+            $plano,
+            $inicio,
+            $fim
+        ) {
             $cliente = ClienteContext::get();
             $contratanteDados = $dados['contratante'];
             $tipo = TipoContratante::from($contratanteDados['tipo']);
@@ -97,22 +138,41 @@ class CriarContratoService
                 'modo_emissao' => $modoEmissao,
                 'renovado_de_contrato_id' => $dados['renovado_de_contrato_id'] ?? null,
                 'chave_plano_sigoweb' => $plano,
+                'chave_familia_sigoweb' => $dados['chave_familia_sigoweb'] ?? null,
                 'codigo' => $dados['codigo'] ?? null,
                 'vigencia_inicio' => $inicio,
                 'vigencia_fim' => $fim,
                 'valor_total' => $valorTotal,
+                'valor_mensal_familia' => $valorMensalFamilia,
                 'quantidade_parcelas' => $qtd,
                 'status' => StatusContrato::Ativo,
             ]);
 
-            $valores = $this->ratearValor($valorTotal, $qtd);
+            $membros = [];
+            foreach ($beneficiarios as $i => $ben) {
+                $membros[] = ContratoBeneficiario::query()->create([
+                    'contrato_id' => $contrato->id,
+                    'chave_sigoweb' => $ben['chave_sigoweb'],
+                    'chave_depend_sigoweb' => $ben['chave_depend_sigoweb'] ?? null,
+                    'nome' => $ben['nome'],
+                    'documento' => $ben['documento'] ?? null,
+                    'tipo_dependencia' => $ben['tipo_dependencia'],
+                    'tipodep_sigoweb' => $ben['tipodep_sigoweb'] ?? null,
+                    'valor_mensal' => $ben['valor_mensal'],
+                    'ordem' => $i + 1,
+                ]);
+            }
+
+            $valoresParcela = $this->ratearValor($valorTotal, $qtd);
+            $composicaoPorParcela = $this->ratearComposicaoPorParcela($membros, $qtd, $valoresParcela);
+
             $primeiroVencimento = Carbon::parse(
                 $dados['primeiro_vencimento']
                     ?? ($perfil === PerfilPagamento::AVista ? $fim : $inicio)
             );
             $hoje = Carbon::today();
 
-            foreach ($valores as $i => $valorParcela) {
+            foreach ($valoresParcela as $i => $valorParcela) {
                 $vencimento = $primeiroVencimento->copy()->addMonthsNoOverflow($i);
                 [$status, $emitidaEm, $pagoEm] = $this->definirParcelaInicial(
                     $perfil,
@@ -122,7 +182,7 @@ class CriarContratoService
                     $jaPago && $perfil === PerfilPagamento::AVista
                 );
 
-                Parcela::query()->create([
+                $parcela = Parcela::query()->create([
                     'contrato_id' => $contrato->id,
                     'numero' => $i + 1,
                     'vencimento' => $vencimento->toDateString(),
@@ -131,16 +191,149 @@ class CriarContratoService
                     'status' => $status,
                     'pago_em' => $pagoEm,
                 ]);
+
+                foreach ($composicaoPorParcela[$i] as $comp) {
+                    ParcelaBeneficiario::query()->create([
+                        'parcela_id' => $parcela->id,
+                        'contrato_beneficiario_id' => $comp['contrato_beneficiario_id'],
+                        'chave_sigoweb' => $comp['chave_sigoweb'],
+                        'nome' => $comp['nome'],
+                        'documento' => $comp['documento'],
+                        'tipo_dependencia' => $comp['tipo_dependencia'],
+                        'valor' => $comp['valor'],
+                    ]);
+                }
             }
 
-            return $contrato->load(['contratante', 'parcelas']);
+            return $contrato->load(['contratante', 'beneficiarios', 'parcelas.beneficiarios']);
         });
     }
 
     /**
-     * Mesma pessoa (contratante) + mesmo plano + vigência sobreposta = bloqueado.
-     * Planos diferentes no mesmo período são permitidos (CPF com mais de um contrato).
+     * @param  list<array<string, mixed>>  $itens
+     * @return list<array{
+     *   chave_sigoweb: string,
+     *   nome: string,
+     *   valor_mensal: float,
+     *   documento: ?string,
+     *   tipo_dependencia: string,
+     *   tipodep_sigoweb: ?string,
+     *   chave_depend_sigoweb: ?string
+     * }>
      */
+    private function normalizarBeneficiarios(array $itens): array
+    {
+        if ($itens === []) {
+            return [];
+        }
+
+        $normalizados = [];
+        $chaves = [];
+
+        foreach ($itens as $item) {
+            $chave = trim((string) ($item['chave_sigoweb'] ?? ''));
+            $nome = trim((string) ($item['nome'] ?? ''));
+            $valorMensal = round((float) ($item['valor_mensal'] ?? 0), 2);
+
+            if ($chave === '' || $nome === '') {
+                throw new DominioException('Cada beneficiário precisa de chave_sigoweb e nome.');
+            }
+            if ($valorMensal < 0) {
+                throw new DominioException("Valor mensal inválido para {$nome}.");
+            }
+            if (isset($chaves[$chave])) {
+                throw new DominioException("Beneficiário duplicado na composição: {$chave}.");
+            }
+            $chaves[$chave] = true;
+
+            $tipodep = isset($item['tipodep_sigoweb']) ? (string) $item['tipodep_sigoweb'] : null;
+            $tipo = $item['tipo_dependencia'] ?? null;
+            if (! in_array($tipo, ['titular', 'dependente'], true)) {
+                $tipo = $tipodep === '3' ? 'titular' : 'dependente';
+            }
+
+            $normalizados[] = [
+                'chave_sigoweb' => $chave,
+                'nome' => $nome,
+                'valor_mensal' => $valorMensal,
+                'documento' => isset($item['documento']) ? (string) $item['documento'] : null,
+                'tipo_dependencia' => $tipo,
+                'tipodep_sigoweb' => $tipodep,
+                'chave_depend_sigoweb' => isset($item['chave_depend_sigoweb'])
+                    ? (string) $item['chave_depend_sigoweb']
+                    : null,
+            ];
+        }
+
+        usort($normalizados, function ($a, $b) {
+            if ($a['tipo_dependencia'] === $b['tipo_dependencia']) {
+                return strcmp($a['nome'], $b['nome']);
+            }
+
+            return $a['tipo_dependencia'] === 'titular' ? -1 : 1;
+        });
+
+        return $normalizados;
+    }
+
+    /**
+     * @param  list<array{valor_mensal: float}>  $beneficiarios
+     */
+    private function somaValorMensal(array $beneficiarios): float
+    {
+        return round(array_sum(array_column($beneficiarios, 'valor_mensal')), 2);
+    }
+
+    /**
+     * Rateia o valor de cada integrante nas N parcelas (centavos no último mês).
+     *
+     * @param  list<ContratoBeneficiario>  $membros
+     * @param  list<float>  $valoresParcela
+     * @return list<list<array<string, mixed>>>
+     */
+    private function ratearComposicaoPorParcela(array $membros, int $qtd, array $valoresParcela): array
+    {
+        if ($membros === []) {
+            return array_fill(0, $qtd, []);
+        }
+
+        /** @var list<list<float>> $porMembro */
+        $porMembro = [];
+        foreach ($membros as $membro) {
+            $totalMembro = round((float) $membro->valor_mensal * $qtd, 2);
+            $porMembro[] = $this->ratearValor($totalMembro, $qtd);
+        }
+
+        $porParcela = [];
+        for ($i = 0; $i < $qtd; $i++) {
+            $linha = [];
+            $soma = 0.0;
+            foreach ($membros as $mi => $membro) {
+                $valor = $porMembro[$mi][$i];
+                $soma = round($soma + $valor, 2);
+                $linha[] = [
+                    'contrato_beneficiario_id' => $membro->id,
+                    'chave_sigoweb' => $membro->chave_sigoweb,
+                    'nome' => $membro->nome,
+                    'documento' => $membro->documento,
+                    'tipo_dependencia' => $membro->tipo_dependencia,
+                    'valor' => $valor,
+                ];
+            }
+
+            // Ajuste fino: composição deve bater com valor da parcela
+            $diff = round($valoresParcela[$i] - $soma, 2);
+            if (abs($diff) >= 0.01 && $linha !== []) {
+                $ultimo = count($linha) - 1;
+                $linha[$ultimo]['valor'] = round($linha[$ultimo]['valor'] + $diff, 2);
+            }
+
+            $porParcela[] = $linha;
+        }
+
+        return $porParcela;
+    }
+
     private function garantirSemSobreposicaoMesmoPlano(
         string $contratanteId,
         string $plano,
@@ -193,7 +386,6 @@ class CriarContratoService
             return [StatusParcela::Aberta, $hoje->toDateString(), null];
         }
 
-        // Escalonada: só entra no CR no mês do vencimento (emissão alinhada ao mês da parcela)
         if ($vencimento->format('Y-m') <= $hoje->format('Y-m')) {
             return [StatusParcela::Aberta, $vencimento->copy()->startOfMonth()->toDateString(), null];
         }
@@ -207,7 +399,6 @@ class CriarContratoService
             return ModoEmissao::from($dados['modo_emissao']);
         }
 
-        // Compat: modo_geracao antigo
         if (! empty($dados['modo_geracao'])) {
             return match ($dados['modo_geracao']) {
                 ClienteConfig::MODO_TODAS_ABERTAS => ModoEmissao::Imediata,

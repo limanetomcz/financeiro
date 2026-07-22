@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\DominioException;
 use App\Http\Controllers\Controller;
+use App\Models\Parcela;
 use App\Services\Parcela\AbrirParcelasExigiveisService;
 use App\Services\Parcela\BaixarParcelaService;
+use App\Services\Parcela\CalcularJurosMultaService;
 use App\Services\Parcela\ListarParcelasContratanteService;
 use App\Services\Parcela\RetirarBaixaParcelaService;
 use Carbon\Carbon;
@@ -46,6 +48,30 @@ class ParcelaController extends Controller
     }
 
     /**
+     * Preview de juros/multa (fórmula Sigoweb / fun_calcular_juros_multa).
+     * POST /api/v1/parcelas/{id}/calcular-juros  { pago_em }
+     */
+    public function calcularJuros(
+        string $id,
+        Request $request,
+        CalcularJurosMultaService $service
+    ): JsonResponse {
+        $dados = $request->validate([
+            'pago_em' => ['required', 'date'],
+        ]);
+
+        $parcela = Parcela::query()->findOrFail($id);
+
+        $resultado = $service->calcular(
+            (float) $parcela->valor,
+            $parcela->vencimento->toDateString(),
+            $dados['pago_em']
+        );
+
+        return response()->json($resultado);
+    }
+
+    /**
      * Baixa manual (caixa/lab).
      * POST /api/v1/parcelas/{id}/baixar
      */
@@ -56,6 +82,9 @@ class ParcelaController extends Controller
             'local_pagamento_codigo' => ['nullable', 'string', 'max:10'],
             'codigo_legado' => ['nullable', 'string', 'max:10'],
             'taxa_id' => ['nullable', 'uuid'],
+            'aplicar_encargos' => ['sometimes', 'boolean'],
+            'valor_juros' => ['nullable', 'numeric', 'min:0'],
+            'valor_multa' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if (empty($dados['codigo_legado']) && empty($dados['local_pagamento_codigo']) && empty($dados['taxa_id'])) {

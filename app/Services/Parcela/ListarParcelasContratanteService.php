@@ -38,6 +38,7 @@ class ListarParcelasContratanteService
         $parcelas = Parcela::query()
             ->with([
                 'contrato',
+                'beneficiarios',
                 'cobrancas' => fn ($q) => $q->orderByDesc('created_at'),
             ])
             ->whereHas('contrato', fn ($q) => $q->where('contratante_id', $contratante->id))
@@ -71,6 +72,8 @@ class ListarParcelasContratanteService
                     && $p->status->value !== 'cancelada'
                     && $vencimento < $hoje,
                 'perfil_pagamento' => $p->contrato?->perfil_pagamento?->value,
+                'chave_plano_sigoweb' => $p->contrato?->chave_plano_sigoweb,
+                'chave_familia_sigoweb' => $p->contrato?->chave_familia_sigoweb,
                 'cobranca_id' => $cobranca?->id,
                 'nosso_numero' => $cobranca?->nosso_numero,
                 'numero_registro' => $cobranca?->numero_registro,
@@ -83,8 +86,24 @@ class ListarParcelasContratanteService
                 'valor_taxa' => $cobranca?->valor_taxa !== null
                     ? (float) $cobranca->valor_taxa
                     : null,
+                'valor_juros' => $cobranca?->valor_juros !== null
+                    ? (float) $cobranca->valor_juros
+                    : null,
+                'valor_multa' => $cobranca?->valor_multa !== null
+                    ? (float) $cobranca->valor_multa
+                    : null,
+                'valor_cobranca' => $cobranca?->valor !== null
+                    ? (float) $cobranca->valor
+                    : null,
                 'modalidade' => $cobranca?->modalidade,
                 'bandeira' => $cobranca?->bandeira,
+                'beneficiarios' => $p->beneficiarios->map(fn ($b) => [
+                    'chave_sigoweb' => $b->chave_sigoweb,
+                    'nome' => $b->nome,
+                    'documento' => $b->documento,
+                    'tipo_dependencia' => $b->tipo_dependencia,
+                    'valor' => (float) $b->valor,
+                ])->values()->all(),
             ];
         })->values()->all();
 
