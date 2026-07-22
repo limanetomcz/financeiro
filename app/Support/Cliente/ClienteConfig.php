@@ -60,6 +60,21 @@ class ClienteConfig
         return (bool) data_get($cliente->config, 'pj.bloquear_beneficiarios_se_empresa_inadimplente', true);
     }
 
+    /** Quantas faturas vencidas tornam a empresa inadimplente. */
+    public static function pjMinFaturasVencidasInadimplencia(Cliente $cliente): int
+    {
+        return max(1, (int) data_get($cliente->config, 'pj.min_faturas_vencidas_inadimplencia', 1));
+    }
+
+    /**
+     * Se a empresa já tem este número de faturas em aberto (aberta/em_cobranca),
+     * não gera nova fatura.
+     */
+    public static function pjMaxFaturasAbertasParaGerar(Cliente $cliente): int
+    {
+        return max(1, (int) data_get($cliente->config, 'pj.max_faturas_abertas_para_gerar', 1));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -82,6 +97,8 @@ class ClienteConfig
                 'boleto_usa_valor' => 'liquido',
                 'dia_vencimento_padrao' => 10,
                 'bloquear_beneficiarios_se_empresa_inadimplente' => true,
+                'min_faturas_vencidas_inadimplencia' => 1,
+                'max_faturas_abertas_para_gerar' => 1,
                 'lancamentos' => [
                     [
                         'codigo' => 'mensalidades',

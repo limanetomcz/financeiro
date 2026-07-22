@@ -57,12 +57,24 @@ Pivot `fatura_parcela`: quais parcelas de beneficiários compuseram o lançament
 
 ## Parametrização (`clientes.config.pj`)
 
+| Parâmetro | Significado | Default Seridó |
+|-----------|-------------|----------------|
+| `min_faturas_vencidas_inadimplencia` | Com quantas faturas **vencidas** a empresa fica inadimplente | `1` |
+| `max_faturas_abertas_para_gerar` | Se já existem N faturas em aberto (`aberta`/`em_cobranca`/`rascunho`), **não gera** outra | `1` |
+| `bloquear_beneficiarios_se_empresa_inadimplente` | PF da empresa também fica barrado | `true` |
+| `boleto_usa_valor` | `liquido` ou `bruto` | `liquido` |
+| `dia_vencimento_padrao` | Dia do vencimento na competência | `10` |
+| `lancamentos[]` | Composição da fatura (mensalidades, IR, ISS, …) | ver abaixo |
+
 ```json
 {
   "pj": {
     "ciclo": "mensal",
     "boleto_usa_valor": "liquido",
     "dia_vencimento_padrao": 10,
+    "min_faturas_vencidas_inadimplencia": 1,
+    "max_faturas_abertas_para_gerar": 1,
+    "bloquear_beneficiarios_se_empresa_inadimplente": true,
     "lancamentos": [
       {
         "codigo": "mensalidades",

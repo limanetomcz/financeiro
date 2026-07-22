@@ -21,18 +21,26 @@ class ElegibilidadeService
      *   motivo: ?string,
      *   parcelas_vencidas: int,
      *   faturas_vencidas: int,
-     *   parametros: array{dias_apos_vencimento: int, min_parcelas_vencidas: int}
+     *   parametros: array{
+     *     dias_apos_vencimento: int,
+     *     min_parcelas_vencidas: int,
+     *     min_faturas_vencidas_inadimplencia: int,
+     *     max_faturas_abertas_para_gerar: int
+     *   }
      * }
      */
     public function avaliarPorChaveSigoweb(string $chaveSigoweb, ?int $diasCarencia = null, ?int $minParcelas = null): array
     {
         $cliente = ClienteContext::get();
         $dias = $diasCarencia ?? ClienteConfig::diasAposVencimento($cliente);
-        $min = $minParcelas ?? ClienteConfig::minParcelasVencidas($cliente);
+        $minParcelasCfg = $minParcelas ?? ClienteConfig::minParcelasVencidas($cliente);
+        $minFaturas = ClienteConfig::pjMinFaturasVencidasInadimplencia($cliente);
 
         $parametros = [
             'dias_apos_vencimento' => $dias,
-            'min_parcelas_vencidas' => $min,
+            'min_parcelas_vencidas' => $minParcelasCfg,
+            'min_faturas_vencidas_inadimplencia' => $minFaturas,
+            'max_faturas_abertas_para_gerar' => ClienteConfig::pjMaxFaturasAbertasParaGerar($cliente),
         ];
 
         $baseNegado = fn (string $motivo, int $parcelas = 0, int $faturas = 0) => [
@@ -60,15 +68,19 @@ class ElegibilidadeService
             && ClienteConfig::pjBloquearBeneficiariosSeEmpresaInadimplente($cliente)
         ) {
             $faturasEmpresa = $this->contarFaturasVencidas($contratante->empresa_id, $limite);
-            if ($faturasEmpresa >= $min) {
+            if ($faturasEmpresa >= $minFaturas) {
                 return $baseNegado('Empresa inadimplente — atendimento bloqueado.', 0, $faturasEmpresa);
             }
         }
 
         if ($contratante->tipo === TipoContratante::Pj) {
             $faturasVencidas = $this->contarFaturasVencidas($contratante->id, $limite);
-            if ($faturasVencidas >= $min) {
-                return $baseNegado("Há {$faturasVencidas} fatura(s) vencida(s).", 0, $faturasVencidas);
+            if ($faturasVencidas >= $minFaturas) {
+                return $baseNegado(
+                    "Há {$faturasVencidas} fatura(s) vencida(s) (mínimo para inadimplência: {$minFaturas}).",
+                    0,
+                    $faturasVencidas
+                );
             }
 
             return [
@@ -97,9 +109,9 @@ class ElegibilidadeService
             ->whereDate('vencimento', '<', $limite)
             ->count();
 
-        if ($vencidas >= $min) {
+        if ($vencidas >= $minParcelasCfg) {
             return $baseNegado(
-                "Há {$vencidas} parcela(s) vencida(s) (mínimo para bloquear: {$min}).",
+                "Há {$vencidas} parcela(s) vencida(s) (mínimo para bloquear: {$minParcelasCfg}).",
                 $vencidas
             );
         }

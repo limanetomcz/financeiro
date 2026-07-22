@@ -41,6 +41,18 @@ class GerarFaturaPjService
             throw new DominioException("Já existe fatura para a competência {$competencia}.");
         }
 
+        $maxAbertas = ClienteConfig::pjMaxFaturasAbertasParaGerar($cliente);
+        $abertas = Fatura::query()
+            ->where('contratante_id', $empresa->id)
+            ->whereIn('status', [StatusFatura::Aberta, StatusFatura::EmCobranca, StatusFatura::Rascunho])
+            ->count();
+
+        if ($abertas >= $maxAbertas) {
+            throw new DominioException(
+                "Empresa já possui {$abertas} fatura(s) em aberto (limite para gerar: {$maxAbertas})."
+            );
+        }
+
         $vencimentoData = $vencimento
             ? Carbon::parse($vencimento)
             : Carbon::createFromFormat('Y-m', $competencia)

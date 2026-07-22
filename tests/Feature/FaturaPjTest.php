@@ -11,6 +11,7 @@ use App\Models\Contratante;
 use App\Services\Cobranca\LiquidarCobrancaService;
 use App\Services\Contrato\CriarContratoService;
 use App\Services\Elegibilidade\ElegibilidadeService;
+use App\Exceptions\DominioException;
 use App\Services\Fatura\EmitirCobrancaFaturaPjService;
 use App\Services\Fatura\GerarFaturaPjService;
 use App\Support\Cliente\ClienteConfig;
@@ -103,5 +104,53 @@ class FaturaPjTest extends TestCase
         app(LiquidarCobrancaService::class)->executar($cobranca);
         $this->assertEquals(StatusFatura::Paga, $fatura->fresh()->status);
         $this->assertTrue(app(ElegibilidadeService::class)->avaliarPorChaveSigoweb('EMP-001')['pode_usar_plano']);
+    }
+
+    public function test_nao_gera_nova_fatura_se_ja_atingiu_max_abertas(): void
+    {
+        app(GerarFaturaPjService::class)->executar(
+            $this->empresa,
+            '2026-06',
+            '2026-06-01',
+            ['ir' => 0, 'iss' => 0]
+        );
+
+        $this->expectException(DominioException::class);
+        $this->expectExceptionMessage('limite para gerar');
+
+        app(GerarFaturaPjService::class)->executar(
+            $this->empresa,
+            '2026-07',
+            '2026-07-01',
+            ['ir' => 0, 'iss' => 0]
+        );
+    }
+
+    public function test_inadimplencia_pj_respeita_min_faturas_vencidas(): void
+    {
+        $cliente = ClienteContext::get();
+        $cliente->update([
+            'config' => array_replace_recursive(ClienteConfig::padraoSerido(), [
+                'pj' => [
+                    'min_faturas_vencidas_inadimplencia' => 2,
+                    'max_faturas_abertas_para_gerar' => 5,
+                ],
+            ]),
+        ]);
+        ClienteContext::set($cliente->fresh());
+
+        app(GerarFaturaPjService::class)->executar(
+            $this->empresa,
+            '2026-06',
+            '2026-06-01',
+            ['ir' => 0, 'iss' => 0]
+        );
+
+        Carbon::setTestNow(Carbon::parse('2026-06-20'));
+
+        // só 1 fatura vencida, mínimo 2 → ainda adimplente
+        $eleg = app(ElegibilidadeService::class)->avaliarPorChaveSigoweb('EMP-001');
+        $this->assertTrue($eleg['pode_usar_plano']);
+        $this->assertEquals(2, $eleg['parametros']['min_faturas_vencidas_inadimplencia']);
     }
 }
