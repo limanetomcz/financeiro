@@ -68,6 +68,8 @@ class ListarParcelasContratanteService
                 'emitida_em' => $p->emitida_em?->toDateString(),
                 'valor' => (float) $p->valor,
                 'status' => $p->status->value,
+                'status_label' => $p->status->label(),
+                'status_descricao' => $p->status->descricao(),
                 'vencida' => $p->status->value !== 'paga'
                     && $p->status->value !== 'cancelada'
                     && $vencimento < $hoje,

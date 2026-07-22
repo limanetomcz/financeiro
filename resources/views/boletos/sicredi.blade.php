@@ -17,7 +17,7 @@
         .mb { margin-bottom: 8px; }
         .corte { border-top: 1px dashed #000; margin: 10px 0; padding-top: 6px; font-size: 8px; color: #444; }
         .barcode { text-align: center; margin-top: 6px; }
-        .barcode img { height: 48px; }
+        .barcode > div { margin: 0 auto; }
         h3 { font-size: 11px; margin: 0 0 4px; }
         .small { font-size: 8px; }
     </style>
@@ -200,8 +200,9 @@
     </table>
 
     <div class="barcode">
-        <img src="data:image/png;base64,{{ $barcode_base64 }}" alt="código de barras">
+        {!! $barcode_html !!}
         <div class="small">Ficha de Compensação / Autenticação Mecânica</div>
+        <div class="small">{{ $barras->codigoBarras }}</div>
     </div>
 </body>
 </html>

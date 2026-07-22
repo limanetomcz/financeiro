@@ -10,7 +10,7 @@ use App\Models\Cobranca;
 use App\Support\Tenant\ClienteContext;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Picqer\Barcode\BarcodeGeneratorPNG;
+use Picqer\Barcode\BarcodeGeneratorHTML;
 
 /**
  * Orquestra PDF de boleto sem conhecer regras de banco.
@@ -54,13 +54,14 @@ class GerarPdfBoletoService
             (float) $cobranca->valor,
         );
 
-        $generator = new BarcodeGeneratorPNG;
-        $barcodePng = base64_encode($generator->getBarcode(
+        // HTML não depende de GD/Imagick (imagem Docker mínima).
+        $generator = new BarcodeGeneratorHTML;
+        $barcodeHtml = $generator->getBarcode(
             $barras->codigoBarras,
             $generator::TYPE_INTERLEAVED_2_5,
-            2,
-            60
-        ));
+            1,
+            50
+        );
 
         $pagador = $cobranca->contratante;
         $padrao = $conta->pagadorPadrao;
@@ -97,7 +98,7 @@ class GerarPdfBoletoService
                 'cep' => preg_replace('/\D/', '', (string) ($pagador?->cep ?: $padrao['cep'])) ?: '',
             ],
             'barras' => $barras,
-            'barcode_base64' => $barcodePng,
+            'barcode_html' => $barcodeHtml,
             'instrucao' => $instrucao,
             'composicao' => $composicao,
             'cnpj_formatado' => $this->formatarCnpj($conta->beneficiarioCnpj),

@@ -69,6 +69,8 @@ class LabLimparFinanceiroTest extends TestCase
         $this->assertTrue($resultado['encontrado']);
         $this->assertSame(1, $resultado['apagados']['contratante']);
         $this->assertSame(12, $resultado['apagados']['parcelas']);
+        $this->assertArrayHasKey('cobrancas', $resultado['apagados']);
+        $this->assertArrayHasKey('remessas', $resultado['apagados']);
         $this->assertFalse(Contratante::query()->where('chave_sigoweb', 'BEN-LAB')->exists());
         $this->assertSame(0, Contrato::query()->count());
     }

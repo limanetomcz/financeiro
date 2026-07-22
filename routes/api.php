@@ -38,8 +38,11 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::get('/locais-pagamento/resolver', [LocalPagamentoController::class, 'resolver']);
     Route::post('/locais-pagamento', [LocalPagamentoController::class, 'store']);
 
-    /** Lab / testes — limpar financeiro do contratante. */
+    /** Lab / testes — limpar / remessa / registrar boletos em lote. */
     Route::delete('/lab/financeiro', [LabController::class, 'limparFinanceiro']);
+    Route::delete('/lab/remessas/{id}', [LabController::class, 'apagarRemessa']);
+    Route::post('/lab/parcelas/abrir-todas', [LabController::class, 'abrirTodasParcelas']);
+    Route::post('/lab/registrar-boletos', [LabController::class, 'registrarBoletos']);
 
     Route::post('/parcelas/abrir-exigiveis', [ParcelaController::class, 'abrirExigiveis']);
     Route::get('/parcelas', [ParcelaController::class, 'index']);

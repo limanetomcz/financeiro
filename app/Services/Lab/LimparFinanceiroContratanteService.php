@@ -8,8 +8,10 @@ use App\Models\Contratante;
 use App\Models\Contrato;
 use App\Models\Fatura;
 use App\Models\Parcela;
+use App\Models\Remessa;
 use App\Models\RemessaItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Limpeza de dados do contratante para testes (lab).
@@ -53,7 +55,17 @@ class LimparFinanceiroContratanteService
                 ->where('contratante_id', $contratante->id)
                 ->pluck('id');
 
+            $remessaIds = collect();
+            if ($cobrancaIds->isNotEmpty()) {
+                $remessaIds = RemessaItem::query()
+                    ->whereIn('cobranca_id', $cobrancaIds)
+                    ->pluck('remessa_id')
+                    ->unique()
+                    ->values();
+            }
+
             $contagens = [
+                'remessas' => $remessaIds->count(),
                 'remessa_itens' => 0,
                 'cobrancas' => $cobrancaIds->count(),
                 'parcelas' => $parcelaIds->count(),
@@ -62,7 +74,24 @@ class LimparFinanceiroContratanteService
                 'contratante' => 1,
             ];
 
-            if ($cobrancaIds->isNotEmpty()) {
+            if ($remessaIds->isNotEmpty()) {
+                $contagens['remessa_itens'] = RemessaItem::query()
+                    ->whereIn('remessa_id', $remessaIds)
+                    ->count();
+
+                $arquivos = Remessa::query()
+                    ->whereIn('id', $remessaIds)
+                    ->pluck('file_path')
+                    ->filter();
+
+                Remessa::query()->whereIn('id', $remessaIds)->delete();
+
+                foreach ($arquivos as $path) {
+                    if ($path && Storage::disk('local')->exists($path)) {
+                        Storage::disk('local')->delete($path);
+                    }
+                }
+            } elseif ($cobrancaIds->isNotEmpty()) {
                 $contagens['remessa_itens'] = RemessaItem::query()
                     ->whereIn('cobranca_id', $cobrancaIds)
                     ->count();
@@ -72,13 +101,17 @@ class LimparFinanceiroContratanteService
                     ->update(['cobranca_id' => null]);
             }
 
-            // Cascata: deletar contratante remove contratos/parcelas/cobranças/faturas
+            if ($cobrancaIds->isNotEmpty()) {
+                Cobranca::query()->whereIn('id', $cobrancaIds)->delete();
+            }
+
+            // Cascata: deletar contratante remove contratos/parcelas/faturas restantes
             $contratante->delete();
 
             return [
                 'encontrado' => true,
                 'chave_sigoweb' => $chaveSigoweb,
-                'message' => 'Financeiro do contratante limpo.',
+                'message' => 'Financeiro do contratante limpo (incluindo boletos e remessas).',
                 'apagados' => $contagens,
             ];
         });

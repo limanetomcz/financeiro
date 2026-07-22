@@ -21,6 +21,7 @@ class GerarRemessaService
 {
     public function __construct(
         private readonly FabricaAdaptadorBanco $fabrica,
+        private readonly DiagnosticoSelecaoRemessaService $diagnosticoSelecao,
     ) {}
 
     /**
@@ -77,6 +78,7 @@ class GerarRemessaService
             );
 
             $titulos = $adapter->seletorTitulos()->selecionar($filtro);
+            $diagnostico = $this->diagnosticoSelecao->executar($filtro);
 
             if ($titulos->isEmpty()) {
                 $remessa->update([
@@ -86,10 +88,13 @@ class GerarRemessaService
                     'geracao_termino' => now(),
                 ]);
 
-                return $remessa->fresh('itens');
+                $vazia = $remessa->fresh('itens');
+                $vazia->setAttribute('diagnostico', $diagnostico);
+
+                return $vazia;
             }
 
-            return DB::transaction(function () use ($remessa, $adapter, $conta, $titulos) {
+            return DB::transaction(function () use ($remessa, $adapter, $conta, $titulos, $diagnostico) {
                 $remessa->itens()->delete();
 
                 /** @var TituloRemessa $titulo */
@@ -128,7 +133,10 @@ class GerarRemessaService
                     'geracao_termino' => now(),
                 ]);
 
-                return $remessa->fresh('itens');
+                $pronta = $remessa->fresh('itens');
+                $pronta->setAttribute('diagnostico', $diagnostico);
+
+                return $pronta;
             });
         } catch (\Throwable $e) {
             $remessa->update([
