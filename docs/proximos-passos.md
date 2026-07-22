@@ -1,51 +1,96 @@
-# Próximos passos (pausado em 22/07/2026)
+# Próximos passos (atualizado em 22/07/2026)
 
 Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
 
-## Já feito (contexto)
+## Já feito (Financeiro — commitado)
 
-- Domínio: contrato / parcela / cobrança / fatura PJ / elegibilidade
-- API situação financeira: `GET /api/v1/financeiro?chave_sigoweb=`
-- Remessa Sicredi CNAB 240 (SOLID, fila `bancario`, fontes no lugar da view)
-- `Fun_GerarNumRegistroUnicred` portada + params em `clientes.config.bancario`
-- Migrations aplicadas no MySQL local (`remessas`, `remessa_itens`, contador…)
+- Domínio: contrato / parcela / cobrança / fatura PJ / elegibilidade / composição familiar (DIRF)
+- Juros/multa na baixa (`CalcularJurosMultaService`, 0,033%/dia + 2%)
+- Locais de pagamento Seridó (canal ≠ taxa) + baixa/retirar baixa com auditoria
+- API situação: `GET /api/v1/financeiro?chave_sigoweb=`
+- Remessa Sicredi CNAB 240 (SOLID, fila `bancario`)
+- Retorno CNAB Sicredi `.CRT` — parser T/U; códigos `02` confirma, `06` liquida, `09`/`10` exclui, `28` tarifa  
+  Validado com arquivos reais `08012930` e `08012722` (+ relatório PDF Sigoweb)
+- PDF boleto Sicredi desacoplado (`FabricaAdaptadorBoleto` + adapter) — `GET /cobrancas/{id}/boleto.pdf`
+- Config Seridó: agência `2207`, posto `04`, cedente `08012`, CNPJ `01.751.280/0001-32`
 
-## Fila imediata
+## Lab Sigoweb (código local — repo `sigoweb` branch `develop`)
 
-0. ~~URL Financeiro no Sigoweb (`.env` + login → `localStorage.url_api_financeiro`)~~ — redes Docker separadas OK  
-0b. ~~Tela lab Sigoweb~~ — `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php` (CPF → gerar contrato 12x → listar)  
-0c. ~~Locais de pagamento Seridó~~ — canal ≠ taxa (`locais_pagamento` + `taxas_local_pagamento`), seed 22 `LOC_CODIGO`, liquidar com snapshot  
-0d. ~~Baixa / retirar baixa no lab~~ — `POST /parcelas/{id}/baixar|retirar-baixa`, auditoria de operador nas colunas (Fusca desligado)  
-1. ~~**Retorno CNAB Sicredi (`.CRT`)**~~ — esqueleto + parser T/U + liquidação/confirmação (fixture). **Falta validar com arquivo real da Seridó.**  
-   Baixa automática → liquidar cobrança / marcar `enviado_remessa = 2` (registrado).
+Arquivos (não versionar dados reais de `.CRT`/PDF de clientes):
 
-2. **Registro de boleto + PIX Sicredi**  
-   Adaptador API do banco (além do arquivo remessa). Discovery: PIX em seguida ao boleto/CNAB.
+- `view_php/vue/financeiro/laboratorioFinanceiro.php`
+- `js/jsvue/laboratorioFinanceiro.js`
 
-3. **Endereço real do pagador**  
-   Sync/campos do Sigoweb nos `contratantes` (hoje há fallback `pagador_padrao`).
+Fluxo do protótipo:
 
-4. **Validar DV com fonte `fun_calculodvmodulo11`**  
-   Se o Oracle divergir do `CalculoDvModulo11`, ajustar só essa classe.
+1. Beneficiário (CPF) + composição família  
+2. Gerar contrato  
+3. Situação financeira  
+4. Grid parcelas (Detalhar / Baixar / Retirar / **Boleto**)  
+5. Remessa (emitir boletos → gerar `.CRM` → download)  
+6. Retorno (upload `.CRT`)
 
-5. **Plano de migração Oracle → MySQL**  
-   Dados Seridó (`112`) + reconciliação com `tb_mensalidade` / faturas.
+URL: `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php`  
+API: `localStorage.url_api_financeiro` + Bearer JWT.
 
-6. **Integração UI Sigoweb**  
-   Telas chamando `localStorage.url_api_financeiro` + Bearer JWT (abandonar geração no `sigo-laravel`).
+## Fila imediata (continuar daqui)
 
-7. **Cutover piloto**  
-   `usa_financeiro_novo = true` na cooperativa `112` + secrets alinhados.
+### A. Polir boleto PDF
+- Comparar visual com `boletos_mensalidades.pdf` (Jasper): demonstrativo dos 12 pagamentos, tributos, ANS
+- Conferir linha digitável com um boleto Sicredi real (mesmo nosso número / valor / vencimento)
+- Migration `retornos_bancarios` no MySQL do ambiente se ainda não rodou: `php artisan migrate`
 
-## Fora do piloto (não priorizar agora)
+### B. Recibo de pagamento presencial
+- Quando baixa no local Uniodonto (`codigo`/`legado` `2`), emitir recibo PDF/HTML do que foi pago (valor, juros/multa, meio, data, operador)
+- Endpoint sugerido: `GET|POST /parcelas/{id}/recibo` ou `/cobrancas/{id}/recibo`
+- Botão no lab após baixa
 
-- Remessa Bradesco / outros bancos (só registrar adapter quando precisar)
+### C. Endereço real do pagador
+- Sync Sigoweb → `contratantes` (hoje `pagador_padrao` / campos opcionais no create)
+- Necessário para boleto “igual produção”
+
+### D. Registro API boleto + PIX Sicredi
+- Além do arquivo remessa; discovery: PIX depois do CNAB estável
+
+### E. Validar DV `fun_calculodvmodulo11`
+- Se Oracle divergir, ajustar só `CalculoDvModulo11`
+
+### F. UI real Sigoweb (fora do lab)
+- Telas de produção apontando para API Financeiro; abandonar geração no `sigo-laravel` no cutover
+
+### G. Migração / cutover piloto Seridó `112`
+- Reconciliação `tb_mensalidade` / faturas  
+- Flag `usa_financeiro_novo = true` + secrets
+
+## Pendências de domínio / produto (não esquecer)
+
+| Tema | Nota |
+|------|------|
+| Família toda excluída | Melhorar fallback se busca família só retornar excluídos |
+| Caixa / Prática | Não mexer no caixa legado no piloto; baixa lab sem caixa |
+| Fatura PJ lote | Domínio `GerarFaturaPjService` existe; falta UI/lote grande no Sigoweb — **depois** do ciclo PF |
+| Remessa ponta a ponta Sicredi | Aceite do `.CRM` no banco + retorno correspondente |
+| Arquivos de exemplo | `.CRT` / PDF em `storage/app/public` são locais — **não commitá-los** (PII) |
+
+## Fora do piloto
+
+- Remessa/boleto Bradesco e outros bancos (só registrar adapter)
 - Boleto avulso (`BA`) e cooperado (`DC`)
-- Débito em conta (“remessa personalizada”)
+- Débito em conta
+
+## Como estender banco (lembrete SOLID)
+
+| Peça | Remessa | Boleto PDF | Retorno |
+|------|---------|------------|---------|
+| Fábrica | `FabricaAdaptadorBanco` | `FabricaAdaptadorBoleto` | parser por banco no service |
+| Contrato | `BancoRemessaAdapterInterface` | `BancoBoletoAdapterInterface` | `RetornoParserInterface` |
+| Novo banco | pasta `app/Bancario/{Banco}/` + `registrar()` | idem + view Blade | novo parser + códigos movimento |
 
 ## Docs úteis
 
-- [remessa-cnab.md](remessa-cnab.md)
+- [remessa-cnab.md](remessa-cnab.md) — remessa + retorno + PDF boleto
 - [discovery-serido.md](discovery-serido.md)
 - [filas-redis.md](filas-redis.md)
 - [integracao-sigoweb.md](integracao-sigoweb.md)
+- [dominio.md](dominio.md)
+- [fatura-pj.md](fatura-pj.md)

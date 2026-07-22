@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ParcelaController;
 use App\Http\Controllers\Api\RemessaController;
 use App\Http\Controllers\Api\RetornoBancarioController;
+use App\Http\Controllers\Api\BoletoController;
 use App\Http\Controllers\Api\SituacaoFinanceiraController;
 use App\Http\Middleware\AuthenticateSigoweb;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,7 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/cobrancas/consolidadas', [CobrancaController::class, 'consolidar']);
     Route::get('/cobrancas/{id}', [CobrancaController::class, 'show']);
     Route::post('/cobrancas/{id}/liquidar', [CobrancaController::class, 'liquidar']);
+    Route::get('/cobrancas/{id}/boleto.pdf', [BoletoController::class, 'pdf']);
 
     Route::get('/locais-pagamento', [LocalPagamentoController::class, 'index']);
     Route::get('/locais-pagamento/resolver', [LocalPagamentoController::class, 'resolver']);

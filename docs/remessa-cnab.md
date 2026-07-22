@@ -189,6 +189,24 @@ Parser: `SicrediCnab240RetornoParser` (posições do legado `arquivoSicredi200Co
 | `28` | Tarifa/custas — registra sem liquidar |
 | outros | Registra sem ação automática |
 
-Validado com `.CRT` reais Seridó:
-- `08012930` → 70×02, 44×06, 44×28
-- `08012722` → 6×09 (exclusão Kandice), 9×06 (mensalidades), 9×28 — bate com relatório Sigoweb
+Arquivo duplicado (mesmo SHA-256) é rejeitado.
+
+## PDF do boleto
+
+```http
+GET /api/v1/cobrancas/{id}/boleto.pdf
+Authorization: Bearer {jwt}
+```
+
+Gera PDF (recibo + ficha de compensação) com linha digitável / código de barras.
+
+### Extensão (outro banco)
+
+Mesmo padrão da remessa (OCP):
+
+1. `app/Bancario/{Banco}/` — `*CodigoBarrasBoleto` + `*BoletoAdapter`
+2. View `resources/views/boletos/{banco}.blade.php`
+3. `FabricaAdaptadorBoleto::registrar('237', BradescoBoletoAdapter::class)`
+4. Config do tenant (`bancario.banco` / `codigo_banco`)
+
+`GerarPdfBoletoService` não conhece Sicredi — só a fábrica + DTO `BoletoCodigoBarrasDTO`.
