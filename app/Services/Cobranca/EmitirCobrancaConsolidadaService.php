@@ -7,6 +7,7 @@ use App\Enums\StatusParcela;
 use App\Enums\TipoCobranca;
 use App\Exceptions\DominioException;
 use App\Models\Cobranca;
+use App\Models\Contratante;
 use App\Models\Parcela;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class EmitirCobrancaConsolidadaService
         return DB::transaction(function () use ($parcelaIds, $vencimento, $meio, $valorJuros, $valorMulta) {
             /** @var Collection<int, Parcela> $parcelas */
             $parcelas = Parcela::query()
-                ->with('contrato')
+                ->with('contrato.contratante')
                 ->whereIn('id', $parcelaIds)
                 ->lockForUpdate()
                 ->get();
@@ -48,6 +49,15 @@ class EmitirCobrancaConsolidadaService
                 throw new DominioException('Todas as parcelas devem ser do mesmo contratante.');
             }
 
+            $contratante = $parcelas->first()->contrato->contratante
+                ?? Contratante::query()->find($contratanteIds->first());
+
+            if (! $contratante || ! $contratante->temEnderecoCompleto()) {
+                throw new DominioException(
+                    'Não é possível gerar cobrança: contratante sem endereço completo (endereço, bairro, cidade, CEP e UF).'
+                );
+            }
+
             foreach ($parcelas as $parcela) {
                 if ($parcela->status !== StatusParcela::Aberta) {
                     throw new DominioException("Parcela {$parcela->numero} não está aberta (status: {$parcela->status->value}).");
@@ -58,7 +68,7 @@ class EmitirCobrancaConsolidadaService
             $valor = round($valorPrincipal + $valorJuros + $valorMulta, 2);
 
             $cobranca = Cobranca::query()->create([
-                'contratante_id' => $contratanteIds->first(),
+                'contratante_id' => $contratante->id,
                 'tipo' => $parcelas->count() > 1 ? TipoCobranca::Consolidada : TipoCobranca::Simples,
                 'valor_principal' => $valorPrincipal,
                 'valor_juros' => $valorJuros,

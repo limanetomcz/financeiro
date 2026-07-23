@@ -84,11 +84,11 @@ class CalcularJurosMultaTest extends TestCase
     public function test_baixa_aplica_encargos_na_cobranca(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-JUROS',
                 'tipo' => 'pf',
                 'nome' => 'Teste Juros',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-JUROS',
@@ -117,11 +117,11 @@ class CalcularJurosMultaTest extends TestCase
     public function test_baixa_pode_dispensar_encargos(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-DISP',
                 'tipo' => 'pf',
                 'nome' => 'Teste Disp',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-DISP',

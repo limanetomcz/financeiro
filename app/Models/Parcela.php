@@ -6,6 +6,7 @@ use App\Enums\StatusParcela;
 use App\Models\Concerns\BelongsToCliente;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,7 @@ class Parcela extends Model
 {
     use BelongsToCliente;
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'parcelas';
 

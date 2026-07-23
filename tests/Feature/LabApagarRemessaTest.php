@@ -48,12 +48,12 @@ class LabApagarRemessaTest extends TestCase
         ClienteContext::set($this->cliente);
 
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-APAGAR-REM',
                 'tipo' => 'pf',
                 'nome' => 'Benef Apagar Remessa',
                 'documento' => '12345678901',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-APAGAR',
@@ -100,7 +100,9 @@ class LabApagarRemessaTest extends TestCase
         $this->assertSame(1, $resultado['apagados']['remessa']);
         $this->assertGreaterThan(0, $resultado['apagados']['cobrancas']);
         $this->assertNull(Remessa::query()->find($this->remessa->id));
+        $this->assertNotNull(Remessa::withTrashed()->find($this->remessa->id)?->deleted_at);
         $this->assertSame(0, Cobranca::query()->count());
+        $this->assertGreaterThan(0, Cobranca::withTrashed()->count());
         $this->assertSame(StatusParcela::Aberta, Parcela::query()->find($this->parcelaId)->status);
     }
 

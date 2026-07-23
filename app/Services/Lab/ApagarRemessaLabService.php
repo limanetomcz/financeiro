@@ -2,15 +2,17 @@
 
 namespace App\Services\Lab;
 
+use App\Enums\StatusCobranca;
 use App\Enums\StatusParcela;
 use App\Exceptions\DominioException;
 use App\Models\Cobranca;
 use App\Models\Remessa;
+use App\Models\RemessaItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Apaga remessa de lab e as cobranças (boletos) vinculadas,
+ * Exclusão lógica da remessa de lab + cobranças vinculadas,
  * devolvendo as parcelas para aberta — permite retestar o fluxo.
  */
 class ApagarRemessaLabService
@@ -50,11 +52,16 @@ class ApagarRemessaLabService
                             $parcelasResetadas++;
                         }
                     }
-                }
 
-                $cobrancasApagadas = Cobranca::query()
-                    ->whereIn('id', $cobrancaIds)
-                    ->delete();
+                    $cobranca->update(['status' => StatusCobranca::Cancelada]);
+                    $cobranca->delete();
+                    $cobrancasApagadas++;
+                }
+            }
+
+            $itens = RemessaItem::query()->where('remessa_id', $remessa->id)->get();
+            foreach ($itens as $item) {
+                $item->delete();
             }
 
             $filePath = $remessa->file_path;
@@ -66,7 +73,7 @@ class ApagarRemessaLabService
             }
 
             return [
-                'message' => 'Remessa e boletos apagados.',
+                'message' => 'Remessa e boletos excluídos (lógico).',
                 'lote' => $lote,
                 'apagados' => [
                     'remessa' => 1,

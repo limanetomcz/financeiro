@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CobrancaController;
 use App\Http\Controllers\Api\ContratoController;
 use App\Http\Controllers\Api\ElegibilidadeController;
+use App\Http\Controllers\Api\EmpresaController;
 use App\Http\Controllers\Api\FaturaController;
 use App\Http\Controllers\Api\LabController;
 use App\Http\Controllers\Api\LocalPagamentoController;
@@ -50,10 +51,20 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/parcelas/{id}/baixar', [ParcelaController::class, 'baixar']);
     Route::post('/parcelas/{id}/retirar-baixa', [ParcelaController::class, 'retirarBaixa']);
 
+    Route::get('/empresas', [EmpresaController::class, 'show']);
+    Route::post('/empresas', [EmpresaController::class, 'store']);
+    Route::post('/empresas/{id}/beneficiarios', [EmpresaController::class, 'vincularBeneficiario']);
+
     Route::get('/faturas', [FaturaController::class, 'index']);
     Route::post('/faturas', [FaturaController::class, 'store']);
     Route::get('/faturas/{id}', [FaturaController::class, 'show']);
+    Route::delete('/faturas/{id}', [FaturaController::class, 'destroy']);
+    Route::get('/faturas/{id}/fatura.pdf', [FaturaController::class, 'pdfFatura']);
+    Route::get('/faturas/{id}/demonstrativo-titulares.pdf', [FaturaController::class, 'pdfDemonstrativoTitulares']);
+    Route::get('/faturas/{id}/demonstrativo.pdf', [FaturaController::class, 'pdfDemonstrativoCompleto']);
+    Route::get('/faturas/{id}/boleto.pdf', [FaturaController::class, 'pdfBoleto']);
     Route::post('/faturas/{id}/cobranca', [FaturaController::class, 'emitirCobranca']);
+    Route::post('/faturas/{id}/lancamentos', [FaturaController::class, 'adicionarLancamento']);
 
     Route::get('/elegibilidade', ElegibilidadeController::class);
 

@@ -30,6 +30,13 @@ return [
     'lab_limpeza_habilitada' => (bool) env('FINANCEIRO_LAB_LIMPEZA', env('APP_ENV') === 'local'),
 
     /*
+    | URL base do sigo-laravel (composição fatura PJ, etc.).
+    | Ex.: http://host.docker.internal/sigo-laravel/public
+    | Pode ser sobrescrito por cliente em config.integracao.sigo_laravel_url.
+    */
+    'sigo_laravel_url' => env('SIGO_LARAVEL_URL'),
+
+    /*
     | Enviar eventos de baixa/estorno ao Fusca.
     | Manter false enquanto testamos (não sujar o Fusca).
     */

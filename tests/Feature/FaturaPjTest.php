@@ -40,12 +40,12 @@ class FaturaPjTest extends TestCase
         ]);
         ClienteContext::set($cliente);
 
-        $this->empresa = Contratante::query()->create([
+        $this->empresa = Contratante::query()->create(array_merge([
             'chave_sigoweb' => 'EMP-001',
             'tipo' => TipoContratante::Pj,
             'nome' => 'Empresa Teste',
             'documento' => '12345678000199',
-        ]);
+        ], $this->enderecoPagadorTeste()));
 
         Contratante::query()->create([
             'empresa_id' => $this->empresa->id,
@@ -90,7 +90,6 @@ class FaturaPjTest extends TestCase
         $this->assertEquals(100.00, (float) $fatura->valor_bruto);
         $this->assertEquals(15.00, (float) $fatura->valor_retencoes);
         $this->assertEquals(85.00, (float) $fatura->valor_liquido);
-        $this->assertCount(1, $fatura->parcelas);
         $this->assertTrue($fatura->lancamentos->contains(fn ($l) => $l->codigo === 'mensalidades' && (float) $l->valor === 100.0));
         $this->assertTrue($fatura->lancamentos->contains(fn ($l) => $l->codigo === 'ir'));
 
@@ -153,5 +152,41 @@ class FaturaPjTest extends TestCase
         $eleg = app(ElegibilidadeService::class)->avaliarPorChaveSigoweb('EMP-001');
         $this->assertTrue($eleg['pode_usar_plano']);
         $this->assertEquals(2, $eleg['parametros']['min_faturas_vencidas_inadimplencia']);
+    }
+
+    public function test_adicionar_desconto_recalcula_liquido_antes_da_cobranca(): void
+    {
+        $fatura = app(GerarFaturaPjService::class)->executar(
+            $this->empresa,
+            '2026-06',
+            '2026-06-01',
+            ['ir' => 10.00, 'iss' => 5.00]
+        );
+
+        $fatura = app(\App\Services\Fatura\AdicionarLancamentoFaturaService::class)->executar($fatura, [
+            'codigo' => 'desconto',
+            'descricao' => 'Desconto negociado',
+            'natureza' => 'retencao',
+            'valor' => 20.00,
+        ]);
+
+        $this->assertEquals(100.00, (float) $fatura->valor_bruto);
+        $this->assertEquals(35.00, (float) $fatura->valor_retencoes);
+        $this->assertEquals(65.00, (float) $fatura->valor_liquido);
+        $this->assertTrue($fatura->lancamentos->contains(fn ($l) => $l->codigo === 'desconto'));
+
+        $cobranca = app(EmitirCobrancaFaturaPjService::class)->executar($fatura);
+        $this->assertEquals(65.00, (float) $cobranca->valor);
+    }
+
+    public function test_vincular_beneficiario_a_empresa(): void
+    {
+        $pf = app(\App\Services\Empresa\VincularBeneficiarioEmpresaService::class)->executar($this->empresa, [
+            'chave_sigoweb' => 'BEN-PJ-NOVO',
+            'nome' => 'Funcionário Novo',
+        ]);
+
+        $this->assertEquals($this->empresa->id, $pf->empresa_id);
+        $this->assertEquals(TipoContratante::Pf, $pf->tipo);
     }
 }

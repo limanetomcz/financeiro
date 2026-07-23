@@ -105,11 +105,11 @@ class DominioCobrancaTest extends TestCase
     public function test_consolidada_com_juros_e_multa_e_liquidacao(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-002',
                 'tipo' => 'pf',
                 'nome' => 'Beltrano',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-002',

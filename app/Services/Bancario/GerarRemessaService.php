@@ -95,7 +95,7 @@ class GerarRemessaService
             }
 
             return DB::transaction(function () use ($remessa, $adapter, $conta, $titulos, $diagnostico) {
-                $remessa->itens()->delete();
+                $remessa->itens()->withTrashed()->get()->each->forceDelete();
 
                 /** @var TituloRemessa $titulo */
                 foreach ($titulos as $titulo) {

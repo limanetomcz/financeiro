@@ -42,12 +42,12 @@ class RemessaSicrediTest extends TestCase
         ClienteContext::set($this->cliente);
 
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-REM',
                 'tipo' => 'pf',
                 'nome' => 'Benef Remessa',
                 'documento' => '12345678901',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-REM',

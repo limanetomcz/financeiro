@@ -80,11 +80,11 @@ class LocaisPagamentoTaxasTest extends TestCase
     public function test_liquidar_com_codigo_legado_grava_snapshot(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-TAXA',
                 'tipo' => 'pf',
                 'nome' => 'Teste Taxa',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-TAXA',

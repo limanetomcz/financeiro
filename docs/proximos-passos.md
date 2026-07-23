@@ -1,4 +1,4 @@
-# Próximos passos (atualizado em 22/07/2026 — noite)
+# Próximos passos (atualizado em 23/07/2026)
 
 Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
 
@@ -13,63 +13,54 @@ Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
 - PDF boleto Sicredi (barcode HTML sem GD) — `GET /cobrancas/{id}/boleto.pdf`
 - Legendário de status: enums `label()`/`descricao()` + [status.md](status.md)
 - Config Seridó: agência `2207`, posto `04`, cedente `08012`, CNPJ `01.751.280/0001-32`
+- Endereço pagador + bloqueio de cobrança sem endereço completo
+- **Fatura PJ protótipo (async):** plano E → `processando` → Laravel só leitura (vidas/TP/preço/flags) → cálculo Seridó no Financeiro → `aberta`. Sem gravar Oracle. Ver [fatura-pj.md](fatura-pj.md)
 
 ## Lab Sigoweb (`develop`)
 
 - `view_php/vue/financeiro/laboratorioFinanceiro.php`
 - `js/jsvue/laboratorioFinanceiro.js`
-- Fluxo: família → gerar → listar → **Registrar boletos** → remessa `.CRM` → retorno `.CRT` → PDF
-- Legendário de status no grid (parcela / remessa)
+- Fluxo PF: família → gerar → listar → **Registrar boletos** → remessa `.CRM` → retorno `.CRT` → PDF
+- Soft delete (`deleted_at`) no domínio — ver [soft-delete.md](soft-delete.md)
 
 URL: `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php`  
 API: `localStorage.url_api_financeiro` + Bearer JWT.
 
-## Fila imediata — estagiário (sugerido hoje à noite)
+## MVP1 — fila imediata
 
-### A. Personalizar / polir boleto PDF *(bom escopo para estagiário)*
+### A. Personalizar / polir boleto PDF *(estagiário)*
 
-**Por quê:** visual, com referência clara, pouco risco de quebrar CNAB/remessa.
+Arquivos: `resources/views/boletos/sicredi.blade.php`, `GerarPdfBoletoService`, adapter Sicredi.  
+Referência: Jasper `boletos_mensalidades.pdf` (local; não commitar PII).  
+Não mexer em CNAB/remessa/retorno.
 
-Arquivos principais:
-- `resources/views/boletos/sicredi.blade.php`
-- `app/Services/Boleto/GerarPdfBoletoService.php`
-- `app/Bancario/Sicredi/SicrediBoletoAdapter.php`
-- Referência visual: Jasper legado `boletos_mensalidades.pdf` (local; não commitar PII)
+### B. Validar no lab
 
-Checklist:
-1. Comparar lado a lado com o PDF Jasper (layout ficha de compensação)
-2. Logo Uniodonto Seridó / cedente
-3. Demonstrativo dos beneficiários da parcela (já existe composição; exibir no PDF)
-4. Bloco “próximas parcelas” / demonstrativo dos 12 pagamentos se couber
-5. Textos ANS / tributos / instruções de pagamento Sicredi
-6. Conferir linha digitável e código de barras com um boleto Sicredi real (mesmo NN/valor/vencimento)
-7. Endereço do pagador: hoje usa `pagador_padrao` se contratante sem endereço — documentar gap (item C)
+- PF: gerar financeiro → boleto PDF / remessa com endereço real
+- PJ: empresa → vínculo → fatura competência → desconto → cobrança → PDF
 
-**Não mexer nesta tarefa:** parser CNAB, geração `.CRM`, retorno `.CRT` (salvo se achar divergência de DV — avisar).
-
-### B. Recibo de pagamento presencial
-- Baixa no local Uniodonto → recibo PDF
-- Endpoint + botão no lab
-
-### C. Endereço real do pagador
-- Sync Sigoweb → `contratantes` (boleto “igual produção”)
-
-### D. Depois do boleto polido
+### C. Depois do boleto + endereço + fatura lab
+- Remessa ponta a ponta (aceite `.CRM` no Sicredi + retorno)
 - PIX / API registro Sicredi (discovery)
 - UI real Sigoweb (fora do lab)
 - Cutover piloto Seridó `112`
 
+## MVP2 (fora do piloto Seridó imediato)
+
+- **Recibo de pagamento presencial** — Seridó **não usa**; adiar
+- Fatura PJ lote grande / impostos por fórmula
+- Outros bancos / BA / DC / débito em conta
 ## Pendências
 
 | Tema | Nota |
 |------|------|
 | Remessa ponta a ponta Sicredi | Aceite do `.CRM` no banco + retorno |
-| Fatura PJ lote | Depois do ciclo PF |
 | Arquivos `.CRT`/PDF locais | **Não commitá-los** (PII) |
 
 ## Docs úteis
 
 - [status.md](status.md) — legendas de status
+- [fatura-pj.md](fatura-pj.md)
 - [remessa-cnab.md](remessa-cnab.md)
 - [discovery-serido.md](discovery-serido.md)
 - [integracao-sigoweb.md](integracao-sigoweb.md)

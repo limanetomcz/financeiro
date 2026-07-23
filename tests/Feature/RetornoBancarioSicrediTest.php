@@ -58,12 +58,12 @@ class RetornoBancarioSicrediTest extends TestCase
         ]);
 
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-RET',
                 'tipo' => 'pf',
                 'nome' => 'Benef Retorno',
                 'documento' => '12345678901',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-RET',

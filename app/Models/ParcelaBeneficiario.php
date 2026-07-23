@@ -5,12 +5,14 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToCliente;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ParcelaBeneficiario extends Model
 {
     use BelongsToCliente;
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'parcela_beneficiarios';
 

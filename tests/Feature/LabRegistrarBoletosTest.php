@@ -36,12 +36,12 @@ class LabRegistrarBoletosTest extends TestCase
         ClienteContext::set($cliente);
 
         app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-REG-LAB',
                 'tipo' => 'pf',
                 'nome' => 'Lab Registrar',
                 'documento' => '12345678901',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-07-01',
             'vigencia_fim' => '2027-06-30',
             'chave_plano_sigoweb' => 'PLANO-REG',

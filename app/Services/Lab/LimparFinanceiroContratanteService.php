@@ -6,15 +6,18 @@ use App\Exceptions\DominioException;
 use App\Models\Cobranca;
 use App\Models\Contratante;
 use App\Models\Contrato;
+use App\Models\ContratoBeneficiario;
 use App\Models\Fatura;
 use App\Models\Parcela;
+use App\Models\ParcelaBeneficiario;
 use App\Models\Remessa;
 use App\Models\RemessaItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Limpeza de dados do contratante para testes (lab).
+ * Limpeza lógica do contratante para testes (lab).
+ * Soft delete em cascata; libera chave_sigoweb para recriar.
  * Não usar em produção.
  */
 class LimparFinanceiroContratanteService
@@ -84,7 +87,8 @@ class LimparFinanceiroContratanteService
                     ->pluck('file_path')
                     ->filter();
 
-                Remessa::query()->whereIn('id', $remessaIds)->delete();
+                RemessaItem::query()->whereIn('remessa_id', $remessaIds)->get()->each->delete();
+                Remessa::query()->whereIn('id', $remessaIds)->get()->each->delete();
 
                 foreach ($arquivos as $path) {
                     if ($path && Storage::disk('local')->exists($path)) {
@@ -102,16 +106,33 @@ class LimparFinanceiroContratanteService
             }
 
             if ($cobrancaIds->isNotEmpty()) {
-                Cobranca::query()->whereIn('id', $cobrancaIds)->delete();
+                Cobranca::query()->whereIn('id', $cobrancaIds)->get()->each->delete();
             }
 
-            // Cascata: deletar contratante remove contratos/parcelas/faturas restantes
+            if ($faturaIds->isNotEmpty()) {
+                Fatura::query()->whereIn('id', $faturaIds)->get()->each->delete();
+            }
+
+            if ($parcelaIds->isNotEmpty()) {
+                ParcelaBeneficiario::query()->whereIn('parcela_id', $parcelaIds)->get()->each->delete();
+                Parcela::query()->whereIn('id', $parcelaIds)->get()->each->delete();
+            }
+
+            if ($contratoIds->isNotEmpty()) {
+                ContratoBeneficiario::query()->whereIn('contrato_id', $contratoIds)->get()->each->delete();
+                Contrato::query()->whereIn('id', $contratoIds)->get()->each->delete();
+            }
+
+            // Libera unique (cliente_id, chave_sigoweb) para recriar no lab.
+            $contratante->update([
+                'chave_sigoweb' => $chaveSigoweb.'#del#'.substr(str_replace('-', '', $contratante->id), 0, 8),
+            ]);
             $contratante->delete();
 
             return [
                 'encontrado' => true,
                 'chave_sigoweb' => $chaveSigoweb,
-                'message' => 'Financeiro do contratante limpo (incluindo boletos e remessas).',
+                'message' => 'Financeiro do contratante excluído (lógico), incluindo boletos e remessas.',
                 'apagados' => $contagens,
             ];
         });

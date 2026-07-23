@@ -9,17 +9,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Fatura extends Model
 {
     use BelongsToCliente;
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'faturas';
 
     protected $fillable = [
         'cliente_id',
         'contratante_id',
+        'chave_plano_sigoweb',
+        'numero',
         'competencia',
         'vencimento',
         'valor_bruto',
@@ -27,6 +31,8 @@ class Fatura extends Model
         'valor_acrescimos',
         'valor_liquido',
         'status',
+        'mensagem_erro',
+        'meta',
         'cobranca_id',
     ];
 
@@ -39,6 +45,7 @@ class Fatura extends Model
             'valor_acrescimos' => 'decimal:2',
             'valor_liquido' => 'decimal:2',
             'status' => StatusFatura::class,
+            'meta' => 'array',
         ];
     }
 

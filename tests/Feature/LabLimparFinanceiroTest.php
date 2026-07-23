@@ -72,7 +72,9 @@ class LabLimparFinanceiroTest extends TestCase
         $this->assertArrayHasKey('cobrancas', $resultado['apagados']);
         $this->assertArrayHasKey('remessas', $resultado['apagados']);
         $this->assertFalse(Contratante::query()->where('chave_sigoweb', 'BEN-LAB')->exists());
+        $this->assertTrue(Contratante::withTrashed()->where('chave_sigoweb', 'like', 'BEN-LAB#del#%')->exists());
         $this->assertSame(0, Contrato::query()->count());
+        $this->assertGreaterThan(0, Contrato::withTrashed()->count());
     }
 
     public function test_nada_a_limpar(): void

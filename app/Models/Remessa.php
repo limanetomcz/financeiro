@@ -6,12 +6,14 @@ use App\Enums\StatusRemessa;
 use App\Models\Concerns\BelongsToCliente;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Remessa extends Model
 {
     use BelongsToCliente;
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'remessas';
 
@@ -50,8 +52,9 @@ class Remessa extends Model
 
     public static function proximoLote(string $clienteId): int
     {
-        $max = (int) static::query()
-            ->withoutGlobalScopes()
+        // Inclui soft-deleted: lote não reaproveita (sequência queimada).
+        $max = (int) static::withTrashed()
+            ->withoutGlobalScope('cliente')
             ->where('cliente_id', $clienteId)
             ->max('lote');
 

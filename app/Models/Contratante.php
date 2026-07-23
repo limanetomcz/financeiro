@@ -6,6 +6,7 @@ use App\Enums\TipoContratante;
 use App\Models\Concerns\BelongsToCliente;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -13,6 +14,7 @@ class Contratante extends Model
 {
     use BelongsToCliente;
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'contratantes';
 
@@ -60,5 +62,25 @@ class Contratante extends Model
     public function faturas(): HasMany
     {
         return $this->hasMany(Fatura::class);
+    }
+
+    /** Endereço mínimo para emitir cobrança/boleto (CNAB/PDF). */
+    public function temEnderecoCompleto(): bool
+    {
+        $campos = [
+            trim((string) $this->endereco),
+            trim((string) $this->bairro),
+            trim((string) $this->cidade),
+            preg_replace('/\D/', '', (string) $this->cep) ?: '',
+            mb_strtoupper(trim((string) $this->uf)),
+        ];
+
+        foreach ($campos as $valor) {
+            if ($valor === '') {
+                return false;
+            }
+        }
+
+        return mb_strlen($campos[4]) === 2;
     }
 }

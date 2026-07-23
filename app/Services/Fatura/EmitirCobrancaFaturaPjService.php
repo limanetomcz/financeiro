@@ -37,6 +37,13 @@ class EmitirCobrancaFaturaPjService
                 throw new DominioException('Valor da cobrança da fatura deve ser maior que zero.');
             }
 
+            $fatura->loadMissing('contratante');
+            if (! $fatura->contratante || ! $fatura->contratante->temEnderecoCompleto()) {
+                throw new DominioException(
+                    'Não é possível gerar cobrança: contratante sem endereço completo (endereço, bairro, cidade, CEP e UF).'
+                );
+            }
+
             $cobranca = Cobranca::query()->create([
                 'contratante_id' => $fatura->contratante_id,
                 'tipo' => TipoCobranca::Simples,

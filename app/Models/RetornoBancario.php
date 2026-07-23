@@ -6,12 +6,14 @@ use App\Enums\StatusRetornoBancario;
 use App\Models\Concerns\BelongsToCliente;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RetornoBancario extends Model
 {
     use BelongsToCliente;
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'retornos_bancarios';
 

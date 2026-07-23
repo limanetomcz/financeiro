@@ -57,11 +57,11 @@ class BaixarRetirarParcelaTest extends TestCase
     public function test_baixa_e_retira_registrando_operador(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-BAIXA',
                 'tipo' => 'pf',
                 'nome' => 'Teste Baixa',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-BAIXA',
@@ -107,11 +107,11 @@ class BaixarRetirarParcelaTest extends TestCase
     public function test_baixa_cartao_por_codigo_legado(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
-            'contratante' => [
+            'contratante' => array_merge([
                 'chave_sigoweb' => 'BEN-CARD',
                 'tipo' => 'pf',
                 'nome' => 'Teste Card',
-            ],
+            ], $this->enderecoPagadorTeste()),
             'vigencia_inicio' => '2026-01-01',
             'vigencia_fim' => '2026-12-31',
             'chave_plano_sigoweb' => 'PLANO-CARD',

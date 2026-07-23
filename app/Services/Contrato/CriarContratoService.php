@@ -23,7 +23,17 @@ class CriarContratoService
 {
     /**
      * @param  array{
-     *   contratante: array{chave_sigoweb: string, tipo: string, nome: string, documento?: ?string},
+     *   contratante: array{
+     *     chave_sigoweb: string,
+     *     tipo: string,
+     *     nome: string,
+     *     documento?: ?string,
+     *     endereco?: ?string,
+     *     bairro?: ?string,
+     *     cidade?: ?string,
+     *     cep?: ?string,
+     *     uf?: ?string
+     *   },
      *   vigencia_inicio: string,
      *   vigencia_fim: string,
      *   valor_total?: float|string,
@@ -123,6 +133,8 @@ class CriarContratoService
                     'documento' => $contratanteDados['documento'] ?? null,
                 ]
             );
+
+            $this->sincronizarDadosContratante($contratante, $contratanteDados, $tipo);
 
             $this->garantirSemSobreposicaoMesmoPlano(
                 $contratante->id,
@@ -332,6 +344,61 @@ class CriarContratoService
         }
 
         return $porParcela;
+    }
+
+    /**
+     * Atualiza nome/documento/endereço quando o Sigoweb envia dados mais recentes.
+     *
+     * @param  array<string, mixed>  $dados
+     */
+    private function sincronizarDadosContratante(Contratante $contratante, array $dados, TipoContratante $tipo): void
+    {
+        $updates = [
+            'tipo' => $tipo,
+            'nome' => $dados['nome'] ?? $contratante->nome,
+            'documento' => array_key_exists('documento', $dados)
+                ? ($dados['documento'] !== null && $dados['documento'] !== ''
+                    ? preg_replace('/\D/', '', (string) $dados['documento'])
+                    : $contratante->documento)
+                : $contratante->documento,
+        ];
+
+        foreach (['endereco', 'bairro', 'cidade', 'cep', 'uf'] as $campo) {
+            if (! array_key_exists($campo, $dados)) {
+                continue;
+            }
+            $valor = $dados[$campo];
+            if ($valor === null) {
+                continue;
+            }
+            $valor = is_string($valor) ? trim($valor) : $valor;
+            if ($valor === '') {
+                continue;
+            }
+            if ($campo === 'cep') {
+                $valor = preg_replace('/\D/', '', (string) $valor) ?: $valor;
+            }
+            if ($campo === 'uf') {
+                $valor = mb_strtoupper(mb_substr((string) $valor, 0, 2));
+            }
+            $updates[$campo] = $valor;
+        }
+
+        if (array_key_exists('empresa_id', $dados) && $dados['empresa_id']) {
+            $empresa = Contratante::query()->find($dados['empresa_id']);
+            if (! $empresa || $empresa->tipo !== TipoContratante::Pj) {
+                throw new DominioException('empresa_id deve apontar para um contratante PJ.');
+            }
+            if ($tipo === TipoContratante::Pj) {
+                throw new DominioException('Contratante PJ não pode ter empresa_id.');
+            }
+            $updates['empresa_id'] = $empresa->id;
+        }
+
+        $contratante->fill($updates);
+        if ($contratante->isDirty()) {
+            $contratante->save();
+        }
     }
 
     private function garantirSemSobreposicaoMesmoPlano(
