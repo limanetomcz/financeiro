@@ -52,7 +52,10 @@ Rotas autenticadas usam `Authorization: Bearer <JWT do Sigoweb>` (sem novo login
 | [docs/ambiente.md](docs/ambiente.md) | Docker, portas, stack |
 | [docs/filas-redis.md](docs/filas-redis.md) | Redis, workers e filas multi-tenant |
 | [docs/casos-emissao-inadimplencia.md](docs/casos-emissao-inadimplencia.md) | Cartão 12x, à vista, boleto mensal |
-| [docs/fatura-pj.md](docs/fatura-pj.md) | Fatura empresarial mensal + impostos |
+| [docs/fatura-pj.md](docs/fatura-pj.md) | Fatura empresarial mensal + impostos + PDFs |
+| [docs/soft-delete.md](docs/soft-delete.md) | Soft delete no domínio |
+| [docs/status.md](docs/status.md) | Legendário de status (enums) |
+| [docs/proximos-passos.md](docs/proximos-passos.md) | **Fila viva** — o que falta agora |
 
 ---
 
@@ -250,19 +253,20 @@ API local: http://localhost:8085
 
 ## Próximos passos
 
-Lista viva (pausada em 22/07/2026): **[docs/proximos-passos.md](docs/proximos-passos.md)**  
+Lista viva (atualizada em **24/07/2026**): **[docs/proximos-passos.md](docs/proximos-passos.md)**  
 Ao retomar: diga *“relembra os próximos passos”*.
 
-Resumo da fila:
+### Já no piloto (lab)
 
-- Redes Docker separadas (`financeiro_*` ≠ `php74_*`); comunicação só via HTTP (`FINANCEIRO_URL`)
-- Retorno CNAB Sicredi (`.CRT`) + baixa
-- Registro boleto + PIX Sicredi
-- Endereço real do pagador / sync Sigoweb
-- Validar DV com fonte `fun_calculodvmodulo11` (se tiver)
-- Migração de dados Oracle → MySQL + reconciliação
-- UI Sigoweb consumindo API do Financeiro (`url_api_financeiro` no login)
-- Cutover `112` / `usa_financeiro_novo` + `SIGOWEB_JWT_SECRET`
+Remessa/retorno Sicredi CNAB, PDF boleto, endereço do pagador, fatura PJ async com 4 PDFs, número `AAAAMM/SSSS`, soft delete, alteração de emissão/vencimento e listagem filtrada. Docker do Financeiro fala com o `sigo-laravel` via `host.docker.internal`.
+
+### Fila imediata
+
+1. Polir layout do boleto PDF (estagiário)
+2. Fechar validação lab PF/PJ com remessa aceita no Sicredi + `.CRT`
+3. Discovery PIX / registro online Sicredi
+4. UI real no Sigoweb (fora do lab)
+5. Cutover Seridó `112` (`usa_financeiro_novo`) + migração/reconciliação Oracle
 
 Infra já preparada: **Redis + filas + worker + scheduler** (ver [docs/filas-redis.md](docs/filas-redis.md)).
 
