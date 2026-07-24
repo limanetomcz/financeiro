@@ -40,8 +40,10 @@ Outro tenant = outra strategy (parametrizar depois).
 | Método | Rota | Uso |
 |--------|------|-----|
 | `POST` | `/faturas` | `chave_plano_sigoweb` + `competencia` → 202 |
-| `GET` | `/faturas/{id}` | Polling (`processando` / `aberta` / `erro`) |
+| `GET` | `/faturas` | Lista com filtros (número, plano, status, emissão/vencimento, sacado, apenas_abertas, …) |
 | `DELETE` | `/faturas/{id}` | Remove fatura (+ boleto se não pago) |
+| `PATCH` | `/faturas/{id}/emissao` | Trocar `data_emissao` (deve ser anterior à atual) |
+| `PATCH` | `/faturas/{id}/vencimento` | Trocar vencimento (+ cobrança se aberta) |
 | `POST` | `/faturas/{id}/cobranca` | Boleto do líquido |
 | `GET` | `/faturas/{id}/fatura.pdf` | PDF fatura de serviço |
 | `GET` | `/faturas/{id}/demonstrativo-titulares.pdf` | Demonstrativo só titulares |

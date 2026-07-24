@@ -10,35 +10,63 @@ use App\Models\Fatura;
 use App\Models\Cobranca;
 use App\Services\Boleto\GerarPdfBoletoService;
 use App\Services\Fatura\AdicionarLancamentoFaturaService;
+use App\Services\Fatura\AlterarEmissaoFaturaService;
+use App\Services\Fatura\AlterarVencimentoFaturaService;
 use App\Services\Fatura\EmitirCobrancaFaturaPjService;
 use App\Services\Fatura\GerarFaturaPjService;
 use App\Services\Fatura\GerarPdfDemonstrativoFaturaService;
 use App\Services\Fatura\GerarPdfFaturaPjService;
+use App\Services\Fatura\ListarFaturasService;
 use App\Services\Fatura\RemoverFaturaService;
 use App\Services\Fatura\SolicitarFaturaPjService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 class FaturaController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, ListarFaturasService $service): JsonResponse
     {
-        $query = Fatura::query()->with(['contratante', 'lancamentos'])->latest();
+        $statusValues = array_column(\App\Enums\StatusFatura::cases(), 'value');
 
-        if ($request->filled('contratante_id')) {
-            $query->where('contratante_id', $request->string('contratante_id'));
+        $filtros = $request->validate([
+            'numero' => ['nullable', 'string', 'max:40'],
+            'chave_plano_sigoweb' => ['nullable', 'string', 'max:64'],
+            'contratante_id' => ['nullable', 'uuid'],
+            'contratante_nome' => ['nullable', 'string', 'max:180'],
+            'contratante_documento' => ['nullable', 'string', 'max:32'],
+            'competencia' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
+            'status' => ['nullable'],
+            'apenas_abertas' => ['sometimes', 'boolean'],
+            'data_emissao_de' => ['nullable', 'date'],
+            'data_emissao_ate' => ['nullable', 'date'],
+            'vencimento_de' => ['nullable', 'date'],
+            'vencimento_ate' => ['nullable', 'date'],
+            'com_cobranca' => ['nullable'],
+            'valor_liquido_min' => ['nullable', 'numeric'],
+            'valor_liquido_max' => ['nullable', 'numeric'],
+            'incluir_excluidas' => ['sometimes', 'boolean'],
+            'somente_excluidas' => ['sometimes', 'boolean'],
+            'ordenar' => ['nullable', Rule::in(['recentes', 'vencimento', 'emissao', 'numero'])],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        if (isset($filtros['status'])) {
+            $status = $filtros['status'];
+            if (is_string($status) && str_contains($status, ',')) {
+                $lista = array_filter(array_map('trim', explode(',', $status)));
+                foreach ($lista as $st) {
+                    if (! in_array($st, $statusValues, true)) {
+                        return response()->json(['message' => "Status inválido: {$st}"], 422);
+                    }
+                }
+            } elseif (is_string($status) && $status !== '' && ! in_array($status, $statusValues, true)) {
+                return response()->json(['message' => "Status inválido: {$status}"], 422);
+            }
         }
 
-        if ($request->filled('chave_plano_sigoweb')) {
-            $query->where('chave_plano_sigoweb', $request->string('chave_plano_sigoweb'));
-        }
-
-        if ($request->filled('competencia')) {
-            $query->where('competencia', $request->string('competencia'));
-        }
-
-        return response()->json($query->paginate(20));
+        return response()->json($service->executar($filtros, (int) ($filtros['per_page'] ?? 20)));
     }
 
     public function show(string $id): JsonResponse
@@ -65,6 +93,46 @@ class FaturaController extends Controller
         }
 
         return response()->json($resultado);
+    }
+
+    public function alterarEmissao(string $id, Request $request, AlterarEmissaoFaturaService $service): JsonResponse
+    {
+        $dados = $request->validate([
+            'data_emissao' => ['required', 'date'],
+        ]);
+
+        $fatura = Fatura::query()->findOrFail($id);
+
+        try {
+            $fatura = $service->executar($fatura, $dados['data_emissao']);
+        } catch (DominioException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Data de emissão atualizada.',
+            'fatura' => $fatura,
+        ]);
+    }
+
+    public function alterarVencimento(string $id, Request $request, AlterarVencimentoFaturaService $service): JsonResponse
+    {
+        $dados = $request->validate([
+            'vencimento' => ['required', 'date'],
+        ]);
+
+        $fatura = Fatura::query()->findOrFail($id);
+
+        try {
+            $fatura = $service->executar($fatura, $dados['vencimento']);
+        } catch (DominioException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Data de vencimento atualizada.',
+            'fatura' => $fatura,
+        ]);
     }
 
     /**

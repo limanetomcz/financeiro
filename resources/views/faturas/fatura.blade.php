@@ -31,7 +31,7 @@
         <tr>
             <td><span class="label">Número fatura</span><br><strong>{{ $numero_fatura }}</strong></td>
             <td class="right"><span class="label">Valor fatura</span><br><strong>R$ {{ number_format((float)$fatura->valor_liquido, 2, ',', '.') }}</strong></td>
-            <td class="center"><span class="label">Emissão</span><br>{{ optional($fatura->created_at)->format('d/m/Y') ?: now()->format('d/m/Y') }}</td>
+            <td class="center"><span class="label">Emissão</span><br>{{ optional($fatura->data_emissao)->format('d/m/Y') ?: (optional($fatura->created_at)->format('d/m/Y') ?: now()->format('d/m/Y')) }}</td>
             <td class="center"><span class="label">Vencimento</span><br>{{ optional($fatura->vencimento)->format('d/m/Y') }}</td>
         </tr>
     </table>

@@ -222,6 +222,7 @@ class ProcessarFaturaPjService
             $fatura->update([
                 'contratante_id' => $empresa->id,
                 'vencimento' => $vencto->toDateString(),
+                'data_emissao' => $fatura->data_emissao?->toDateString() ?? now()->toDateString(),
                 'status' => StatusFatura::Aberta,
                 'numero' => $numero,
                 'mensagem_erro' => null,

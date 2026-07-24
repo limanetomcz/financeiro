@@ -85,6 +85,7 @@ class SolicitarFaturaPjService
             'contratante_id' => $empresa->id,
             'chave_plano_sigoweb' => $chavePlano,
             'competencia' => $competencia,
+            'data_emissao' => now()->toDateString(),
             'vencimento' => $vencimentoData->toDateString(),
             'status' => StatusFatura::Processando,
             'mensagem_erro' => null,

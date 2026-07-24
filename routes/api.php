@@ -59,6 +59,8 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
     Route::post('/faturas', [FaturaController::class, 'store']);
     Route::get('/faturas/{id}', [FaturaController::class, 'show']);
     Route::delete('/faturas/{id}', [FaturaController::class, 'destroy']);
+    Route::patch('/faturas/{id}/emissao', [FaturaController::class, 'alterarEmissao']);
+    Route::patch('/faturas/{id}/vencimento', [FaturaController::class, 'alterarVencimento']);
     Route::get('/faturas/{id}/fatura.pdf', [FaturaController::class, 'pdfFatura']);
     Route::get('/faturas/{id}/demonstrativo-titulares.pdf', [FaturaController::class, 'pdfDemonstrativoTitulares']);
     Route::get('/faturas/{id}/demonstrativo.pdf', [FaturaController::class, 'pdfDemonstrativoCompleto']);

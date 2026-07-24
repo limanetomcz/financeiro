@@ -140,6 +140,7 @@ class GerarFaturaPjService
             $fatura = Fatura::query()->create([
                 'contratante_id' => $empresa->id,
                 'competencia' => $competencia,
+                'data_emissao' => now()->toDateString(),
                 'vencimento' => $vencimentoData->toDateString(),
                 'status' => StatusFatura::Aberta,
             ]);

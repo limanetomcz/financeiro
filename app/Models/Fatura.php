@@ -25,6 +25,7 @@ class Fatura extends Model
         'chave_plano_sigoweb',
         'numero',
         'competencia',
+        'data_emissao',
         'vencimento',
         'valor_bruto',
         'valor_retencoes',
@@ -39,6 +40,7 @@ class Fatura extends Model
     protected function casts(): array
     {
         return [
+            'data_emissao' => 'date',
             'vencimento' => 'date',
             'valor_bruto' => 'decimal:2',
             'valor_retencoes' => 'decimal:2',
