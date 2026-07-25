@@ -66,10 +66,10 @@ Fatia do contrato. É a dívida unitária.
 | `cancelada` | Anulada |
 | `perdida` | Baixa como perda (futuro) |
 
-Campo `emitida_em`: quando a parcela entrou no CR.  
-`modo_emissao = escalonada` (padrão boleto): mês corrente `aberta` + `emitida_em`; futuros `prevista` sem emissão.  
-`modo_emissao = imediata` (ex. cartão 12x no ato): todas `aberta` com `emitida_em` na adesão.  
-Job/API `parcelas:abrir-exigiveis` promove `prevista` → `aberta` no virar do mês.
+Campo `emitida_em`: quando a parcela entrou no CR / reconhecimento mensal.  
+`perfil_pagamento = boleto_parcelado` + `modo_emissao = escalonada`: mês corrente `aberta`; futuros `prevista`. Job promove → `aberta`.  
+`perfil_pagamento = cartao_parcelado` + `escalonada` (Seridó): mês corrente já `paga`; futuros `prevista`. Job promove → **`paga`** (recebimento na adesão; emissão mês a mês).  
+`modo_emissao = imediata` no boleto: todas `aberta` na adesão (útil no lab de remessa).
 
 ### Cobrança
 

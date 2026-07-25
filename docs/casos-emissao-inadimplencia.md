@@ -15,28 +15,23 @@ Inadimplência / “barrar atendimento” olha só parcelas **abertas** ou **em_
 
 ---
 
-## Caso 1 — Cartão 12x
+## Caso 1 — Cartão 12x (Seridó)
 
-Contrato anual, pago em 12 vezes no cartão.
+Contrato anual pago no cartão (valor cheio em 12x na operadora). Na Uniodonto as parcelas **já nascem baixadas** (`paga`), porque o recebimento ocorreu na adesão. A **emissão** (`emitida_em`) segue **mês a mês** para não poluir o CR contábil de uma vez.
 
-### 1a) Emissão imediata
+### Padrão Seridó — emissão escalonada + já baixada
 
 - `perfil_pagamento = cartao_parcelado`
+- `modo_emissao = escalonada` (padrão do perfil)
+- Mês corrente e anteriores: status `paga`, com `emitida_em` e `pago_em`
+- Meses futuros: `prevista` (ainda sem emissão) → **não incham o CR**
+- Job `parcelas:abrir-exigiveis` promove `prevista` → **`paga`** (não `aberta`) e preenche `emitida_em`
+
+### Variante — emissão imediata (todas baixadas no ato)
+
 - `modo_emissao = imediata`
-- 12 parcelas com `emitida_em = hoje` (adesão) e vencimentos mensais (repasse/cobrança do cartão)
-- Status inicial: todas `aberta` (entram no CR no mesmo mês)
-
-Uso: quando a Uniodonto aceita CR alto no mês da adesão.
-
-### 1b) Emissão escalonada
-
-- `perfil_pagamento = cartao_parcelado`
-- `modo_emissao = escalonada`
-- 12 parcelas; cada uma com `emitida_em` no seu mês (jan, fev, …)
-- Futuras ficam `prevista` até o mês da emissão → **não incham o CR**
-- Alinha com repasse gradual do cartão
-
-Job `parcelas:abrir-exigiveis` promove `prevista` → `aberta` e preenche `emitida_em` se ainda null.
+- 12 parcelas `paga` com `emitida_em = hoje`
+- Uso raro: só se a cooperativa aceitar reconhecer tudo no mês da adesão
 
 ---
 
@@ -60,9 +55,9 @@ Job `parcelas:abrir-exigiveis` promove `prevista` → `aberta` e preenche `emiti
 
 ## Resumo
 
-| Caso | Perfil | Emissão | Inadimplência |
-|------|--------|---------|---------------|
-| Cartão 12x CR no ato | `cartao_parcelado` | `imediata` | Nas parcelas abertas/vencidas (todas já no CR) |
-| Cartão 12x CR mês a mês | `cartao_parcelado` | `escalonada` | Só após a parcela do mês ser emitida/vencer |
-| Anual à vista pago | `a_vista` + `ja_pago` | 1 parcela paga | Só na renovação |
-| Boleto 12x | `boleto_parcelado` | `escalonada` | Mensal |
+| Caso | Perfil | Emissão | Status | Inadimplência |
+|------|--------|---------|--------|---------------|
+| Cartão 12x (Seridó) | `cartao_parcelado` | `escalonada` | `paga` / `prevista`→`paga` | Não (já liquidado) |
+| Cartão 12x tudo no ato | `cartao_parcelado` | `imediata` | todas `paga` | Não |
+| Anual à vista pago | `a_vista` + `ja_pago` | 1 parcela | `paga` | Só na renovação |
+| Boleto 12x | `boleto_parcelado` | `escalonada` | `aberta` / `prevista`→`aberta` | Mensal |

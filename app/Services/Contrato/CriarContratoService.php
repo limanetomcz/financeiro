@@ -449,6 +449,20 @@ class CriarContratoService
             return [StatusParcela::Paga, $hoje->toDateString(), $hoje->copy()];
         }
 
+        // Cartão: cliente já pagou o ano (ex.: 12x no cartão). Parcelas nascem baixadas;
+        // emissão continua escalonada para não inchar o CR contábil de uma vez.
+        if ($perfil === PerfilPagamento::CartaoParcelado) {
+            if ($modo === ModoEmissao::Imediata || $vencimento->format('Y-m') <= $hoje->format('Y-m')) {
+                $emitidaEm = $modo === ModoEmissao::Imediata
+                    ? $hoje->toDateString()
+                    : $vencimento->copy()->startOfMonth()->toDateString();
+
+                return [StatusParcela::Paga, $emitidaEm, $hoje->copy()];
+            }
+
+            return [StatusParcela::Prevista, null, null];
+        }
+
         if ($modo === ModoEmissao::Imediata) {
             return [StatusParcela::Aberta, $hoje->toDateString(), null];
         }
@@ -475,6 +489,11 @@ class CriarContratoService
 
         if ($perfil === PerfilPagamento::AVista) {
             return ModoEmissao::Imediata;
+        }
+
+        // Cartão Seridó: emissão mês a mês (mesmo com parcelas já baixadas).
+        if ($perfil === PerfilPagamento::CartaoParcelado) {
+            return ModoEmissao::Escalonada;
         }
 
         $cliente = ClienteContext::get();

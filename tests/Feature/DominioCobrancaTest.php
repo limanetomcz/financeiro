@@ -96,8 +96,53 @@ class DominioCobrancaTest extends TestCase
         $resultado = app(AbrirParcelasExigiveisService::class)->executar();
 
         $this->assertEquals(1, $resultado['abertas']);
+        $this->assertEquals(0, $resultado['pagas']);
         $this->assertEquals(
             8,
+            Parcela::query()->where('contrato_id', $contrato->id)->where('status', StatusParcela::Aberta)->count()
+        );
+    }
+
+    public function test_cartao_parcelado_gera_parcelas_ja_baixadas_com_emissao_escalonada(): void
+    {
+        $contrato = app(CriarContratoService::class)->executar([
+            'contratante' => [
+                'chave_sigoweb' => 'BEN-CARTAO',
+                'tipo' => 'pf',
+                'nome' => 'Cartão Anual',
+            ],
+            'vigencia_inicio' => '2026-01-01',
+            'vigencia_fim' => '2026-12-31',
+            'chave_plano_sigoweb' => 'PLANO-CARTAO',
+            'valor_total' => 1200.00,
+            'quantidade_parcelas' => 12,
+            'primeiro_vencimento' => '2026-01-10',
+            'perfil_pagamento' => 'cartao_parcelado',
+            'modo_emissao' => 'escalonada',
+        ]);
+
+        $pagas = $contrato->parcelas->where('status', StatusParcela::Paga);
+        $previstas = $contrato->parcelas->where('status', StatusParcela::Prevista);
+        $abertas = $contrato->parcelas->where('status', StatusParcela::Aberta);
+
+        // jul/2026: jan..jul pagas; ago..dez previstas; nenhuma aberta no CR
+        $this->assertEquals(7, $pagas->count());
+        $this->assertEquals(5, $previstas->count());
+        $this->assertEquals(0, $abertas->count());
+        $this->assertTrue($pagas->every(fn ($p) => $p->pago_em !== null));
+        $this->assertTrue($pagas->every(fn ($p) => $p->emitida_em !== null));
+
+        Carbon::setTestNow(Carbon::parse('2026-08-05'));
+        $resultado = app(AbrirParcelasExigiveisService::class)->executar();
+
+        $this->assertEquals(0, $resultado['abertas']);
+        $this->assertEquals(1, $resultado['pagas']);
+        $this->assertEquals(
+            8,
+            Parcela::query()->where('contrato_id', $contrato->id)->where('status', StatusParcela::Paga)->count()
+        );
+        $this->assertEquals(
+            0,
             Parcela::query()->where('contrato_id', $contrato->id)->where('status', StatusParcela::Aberta)->count()
         );
     }
