@@ -9,6 +9,7 @@ use App\Exceptions\DominioException;
 use App\Models\Cobranca;
 use App\Models\Fatura;
 use App\Services\LocalPagamento\ResolverLocalPagamentoService;
+use App\Services\Parcela\CalcularJurosMultaService;
 use App\Support\Auth\OperadorAtual;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 class LiquidarCobrancaService
 {
     public function __construct(
-        private readonly ResolverLocalPagamentoService $resolverLocal
+        private readonly ResolverLocalPagamentoService $resolverLocal,
+        private readonly CalcularJurosMultaService $calcularJuros,
     ) {}
 
     /**
@@ -25,6 +27,9 @@ class LiquidarCobrancaService
      *   local_pagamento_codigo?: ?string,
      *   codigo_legado?: ?string,
      *   taxa_id?: ?string,
+     *   aplicar_encargos?: bool,
+     *   valor_juros?: float|int|string|null,
+     *   valor_multa?: float|int|string|null,
      *   operador?: array{login?: string, nome?: ?string}
      * }|null  $opcoes
      */
@@ -45,6 +50,9 @@ class LiquidarCobrancaService
                 : (isset($opcoes['pago_em']) && $opcoes['pago_em']
                     ? Carbon::parse($opcoes['pago_em'])
                     : now());
+
+            $this->aplicarEncargosSeSolicitado($cobranca, $quando->toDateString(), $opcoes);
+            $cobranca->refresh();
 
             $dados = [
                 'status' => StatusCobranca::Paga,
@@ -68,12 +76,13 @@ class LiquidarCobrancaService
                     'na_data' => $quando->toDateString(),
                 ]);
 
+                $baseTaxa = (float) $cobranca->valor_principal;
                 $dados = array_merge(
                     $dados,
                     $this->resolverLocal->snapshotParaCobranca(
                         $resolvido['local'],
                         $resolvido['taxa'],
-                        (float) $cobranca->valor_principal
+                        $baseTaxa
                     )
                 );
             }
@@ -111,5 +120,54 @@ class LiquidarCobrancaService
 
             return $cobranca->fresh(['parcelas', 'localPagamento', 'taxaLocalPagamento']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $opcoes
+     */
+    private function aplicarEncargosSeSolicitado(Cobranca $cobranca, string $pagoEm, array $opcoes): void
+    {
+        // Sem chave: não recalcula (baixa de parcela já aplicou antes; retorno bancário manda valores prontos).
+        if (! array_key_exists('aplicar_encargos', $opcoes)
+            && ! array_key_exists('valor_juros', $opcoes)
+            && ! array_key_exists('valor_multa', $opcoes)) {
+            return;
+        }
+
+        $aplicar = array_key_exists('aplicar_encargos', $opcoes)
+            ? (bool) $opcoes['aplicar_encargos']
+            : true;
+
+        $principal = round((float) $cobranca->valor_principal, 2);
+        $vencimento = $cobranca->vencimento?->toDateString() ?? $pagoEm;
+
+        $calc = $this->calcularJuros->calcular(
+            $principal,
+            $vencimento,
+            $pagoEm,
+            ! $aplicar
+        );
+
+        if (! $aplicar || ! $calc['atrasada'] || $calc['carencia_fds_aplicada']) {
+            $juros = 0.0;
+            $multa = 0.0;
+        } else {
+            $juros = array_key_exists('valor_juros', $opcoes) && $opcoes['valor_juros'] !== null
+                ? round((float) $opcoes['valor_juros'], 2)
+                : $calc['valor_juros'];
+            $multa = array_key_exists('valor_multa', $opcoes) && $opcoes['valor_multa'] !== null
+                ? round((float) $opcoes['valor_multa'], 2)
+                : $calc['valor_multa'];
+        }
+
+        if ($juros < 0 || $multa < 0) {
+            throw new DominioException('Juros e multa não podem ser negativos.');
+        }
+
+        $cobranca->update([
+            'valor_juros' => $juros,
+            'valor_multa' => $multa,
+            'valor' => round($principal + $juros + $multa, 2),
+        ]);
     }
 }

@@ -36,7 +36,9 @@ Branch: `feature/lab-financeiro-prototipo-pj` (não mergear em `develop`/`main` 
 URL: `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php`  
 API: `localStorage.url_api_financeiro` + Bearer JWT.
 
-**Atenção:** se Docker recriar o MySQL, rode de novo `php artisan db:seed` (Cliente `112`). Sem seed → `Cliente não cadastrado no Financeiro`.
+**Atenção:** se Docker recriar o MySQL, rode de novo `php artisan db:seed` (Cliente `112`). Sem seed → `Cliente não cadastrado no Financeiro`.  
+O entrypoint do app também tenta o `ClienteSeridoSeeder` em `APP_ENV=local`.  
+**PHPUnit:** o container exporta `DB_*=mysql`; `tests/bootstrap.php` força SQLite `:memory:` (senão `RefreshDatabase` apaga o lab).
 
 Laravel (dados fatura, só leitura): branch `feature/financeiro-novo-dados-fatura-readonly`.
 

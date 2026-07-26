@@ -9,15 +9,23 @@ Abandonar no cutover: `tb_fatura`, `tb_mensalidade`, `tb_lancamento_mensalidade`
 
 ```text
 1. Lab/Sigoweb-protótipo  →  POST Financeiro /faturas
-      { chave_plano_sigoweb, competencia, sincrono? }
+      { chave_plano_sigoweb, competencia, data_base?, sincrono? }
 2. Financeiro cria fatura status=processando  →  202
 3. Job (fila cobranca)  →  GET Laravel dadosFaturaFinanceiroNovo (HTTP sync)
-4. Laravel só LÊ Oracle: plano E, vidas, histben/TP, vlpreco, flags imposto
+4. Laravel só LÊ Oracle: plano E, vidas (corte pela data base), histben/TP, vlpreco, flags imposto
 5. Financeiro calcula valor por vida (regras Seridó), soma, impostos
 6. Grava fatura_lancamentos + fatura status=aberta (ou erro)
 ```
 
 `sincrono=1` processa na hora (lab sem worker).
+
+### Data base (corte de vidas)
+
+Mesma regra do Sigoweb / `Fun_GeraFaturaPrePagto`:
+
+- inclui vida se `ben_dtinclpla <= data_base` **e** (`ben_dtexcl IS NULL` **ou** `ben_dtexcl > data_base`)
+- default (se omitida): **fim do mês da competência**
+- gravada em `faturas.meta.data_base` (solicitada + efetiva após processar)
 
 ## O que NÃO fazemos
 
@@ -39,7 +47,7 @@ Outro tenant = outra strategy (parametrizar depois).
 
 | Método | Rota | Uso |
 |--------|------|-----|
-| `POST` | `/faturas` | `chave_plano_sigoweb` + `competencia` → 202 |
+| `POST` | `/faturas` | `chave_plano_sigoweb` + `competencia` + `data_base?` → 202 |
 | `GET` | `/faturas` | Lista com filtros (número, plano, status, emissão/vencimento, sacado, apenas_abertas, …) |
 | `DELETE` | `/faturas/{id}` | Remove fatura (+ boleto se não pago) |
 | `PATCH` | `/faturas/{id}/emissao` | Trocar `data_emissao` (deve ser anterior à atual) |
@@ -49,7 +57,7 @@ Outro tenant = outra strategy (parametrizar depois).
 | `GET` | `/faturas/{id}/demonstrativo-titulares.pdf` | Demonstrativo só titulares |
 | `GET` | `/faturas/{id}/demonstrativo.pdf` | Demonstrativo titulares + dependentes |
 | `GET` | `/faturas/{id}/boleto.pdf` | PDF boleto (exige `cobranca_id`) |
-| Laravel `GET` | `.../dadosFaturaFinanceiroNovo/{plano}?competencia=` | Dados brutos |
+| Laravel `GET` | `.../dadosFaturaFinanceiroNovo/{plano}?competencia=&data_base=` | Dados brutos (vidas cortadas pela DB) |
 
 **Número da fatura:** `AAAAMM/SSSS` (ex. `202612/0001`).
 
@@ -72,3 +80,5 @@ Após fatura `aberta` / `em_cobranca` / `paga`:
 
 `processando` → `aberta` → `em_cobranca` → `paga`  
 ou `erro` (+ `mensagem_erro`)
+
+**Baixa no lab:** com fatura `em_cobranca`, botão **Baixar fatura** chama `POST /cobrancas/{id}/calcular-juros` + `POST /cobrancas/{id}/liquidar` (local + data recebimento + encargos se atrasada) e a fatura vai para `paga`.

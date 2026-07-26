@@ -4,6 +4,7 @@ namespace App\Services\Integracao;
 
 use App\Exceptions\DominioException;
 use App\Support\Tenant\ClienteContext;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -14,8 +15,12 @@ class SigoLaravelClient
     /**
      * @return array<string, mixed>
      */
-    public function dadosFaturaPj(string $chavePlano, string $competencia, ?string $bearerToken = null): array
-    {
+    public function dadosFaturaPj(
+        string $chavePlano,
+        string $competencia,
+        ?string $bearerToken = null,
+        ?string $dataBase = null,
+    ): array {
         $base = $this->baseUrl();
         $token = $bearerToken ?: $this->tokenDaRequisicaoAtual();
 
@@ -25,11 +30,16 @@ class SigoLaravelClient
 
         $url = rtrim($base, '/') . '/api/v1/financeiro/contasReceber/fatura/dadosFaturaFinanceiroNovo/' . rawurlencode($chavePlano);
 
+        $query = ['competencia' => $competencia];
+        if ($dataBase !== null && trim($dataBase) !== '') {
+            $query['data_base'] = Carbon::parse($dataBase)->toDateString();
+        }
+
         try {
             $response = Http::withToken($token)
                 ->acceptJson()
                 ->timeout(120)
-                ->get($url, ['competencia' => $competencia]);
+                ->get($url, $query);
         } catch (\Throwable $e) {
             throw new DominioException('Falha ao contatar sigo-laravel: ' . $e->getMessage());
         }
@@ -53,9 +63,13 @@ class SigoLaravelClient
     }
 
     /** @deprecated use dadosFaturaPj */
-    public function composicaoFaturaPj(string $chavePlano, string $competencia, ?string $bearerToken = null): array
-    {
-        return $this->dadosFaturaPj($chavePlano, $competencia, $bearerToken);
+    public function composicaoFaturaPj(
+        string $chavePlano,
+        string $competencia,
+        ?string $bearerToken = null,
+        ?string $dataBase = null,
+    ): array {
+        return $this->dadosFaturaPj($chavePlano, $competencia, $bearerToken, $dataBase);
     }
 
     private function baseUrl(): string

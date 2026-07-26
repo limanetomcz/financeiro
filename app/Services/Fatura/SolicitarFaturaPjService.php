@@ -33,6 +33,7 @@ class SolicitarFaturaPjService
         ?string $bearerToken = null,
         ?array $dadosOverride = null,
         float $percentualReajuste = 0.0,
+        ?string $dataBase = null,
     ): Fatura {
         if (! preg_match('/^\d{4}-\d{2}$/', $competencia)) {
             throw new DominioException('Competência deve estar no formato YYYY-MM.');
@@ -42,6 +43,12 @@ class SolicitarFaturaPjService
         if ($chavePlano === '') {
             throw new DominioException('Informe chave_plano_sigoweb.');
         }
+
+        // Data de corte de vidas: incl ≤ DB e (excl nula ou excl > DB).
+        // Default alinhado ao Laravel de leitura: fim do mês da competência.
+        $dataBaseEfetiva = $dataBase
+            ? Carbon::parse($dataBase)->toDateString()
+            : Carbon::createFromFormat('Y-m', $competencia)->endOfMonth()->toDateString();
 
         $cliente = ClienteContext::get();
 
@@ -91,6 +98,7 @@ class SolicitarFaturaPjService
             'mensagem_erro' => null,
             'meta' => [
                 'percentual_reajuste' => $percentualReajuste,
+                'data_base' => $dataBaseEfetiva,
                 'solicitado_em' => now()->toIso8601String(),
             ],
             'valor_bruto' => 0,

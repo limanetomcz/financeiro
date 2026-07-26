@@ -147,6 +147,8 @@ class FaturaController extends Controller
             'contratante_id' => ['nullable', 'uuid', 'exists:contratantes,id'],
             'competencia' => ['required', 'regex:/^\d{4}-\d{2}$/'],
             'vencimento' => ['nullable', 'date'],
+            // Corte de vidas: incl ≤ data_base e (excl nula ou excl > data_base).
+            'data_base' => ['nullable', 'date'],
             'sincrono' => ['sometimes', 'boolean'],
             'percentual_reajuste' => ['nullable', 'numeric'],
             'dados' => ['nullable', 'array'],
@@ -171,6 +173,7 @@ class FaturaController extends Controller
                     $token,
                     $override,
                     (float) ($dados['percentual_reajuste'] ?? 0),
+                    $dados['data_base'] ?? null,
                 );
 
                 $status = $request->boolean('sincrono') ? 201 : 202;
@@ -214,8 +217,13 @@ class FaturaController extends Controller
 
         $fatura = Fatura::query()->findOrFail($id);
 
+        $token = null;
+        if (preg_match('/^Bearer\s+(.+)$/i', (string) $request->header('Authorization', ''), $m)) {
+            $token = trim($m[1]);
+        }
+
         try {
-            $cobranca = $service->executar($fatura, $dados['meio'] ?? 'boleto');
+            $cobranca = $service->executar($fatura, $dados['meio'] ?? 'boleto', $token);
         } catch (DominioException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

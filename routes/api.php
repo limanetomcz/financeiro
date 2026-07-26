@@ -32,6 +32,7 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
 
     Route::post('/cobrancas/consolidadas', [CobrancaController::class, 'consolidar']);
     Route::get('/cobrancas/{id}', [CobrancaController::class, 'show']);
+    Route::post('/cobrancas/{id}/calcular-juros', [CobrancaController::class, 'calcularJuros']);
     Route::post('/cobrancas/{id}/liquidar', [CobrancaController::class, 'liquidar']);
     Route::get('/cobrancas/{id}/boleto.pdf', [BoletoController::class, 'pdf']);
 

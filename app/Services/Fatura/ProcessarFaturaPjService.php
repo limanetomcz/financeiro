@@ -7,7 +7,7 @@ use App\Enums\StatusFatura;
 use App\Exceptions\DominioException;
 use App\Models\Fatura;
 use App\Models\FaturaLancamento;
-use App\Services\Empresa\UpsertEmpresaPjService;
+use App\Services\Empresa\SincronizarEmpresaDoPlanoService;
 use App\Services\Integracao\SigoLaravelClient;
 use Illuminate\Support\Facades\DB;
 
@@ -17,7 +17,7 @@ class ProcessarFaturaPjService
         private SigoLaravelClient $sigoLaravel,
         private CalcularValorVidaSeridoService $calcularVida,
         private CalcularImpostosFaturaPjService $calcularImpostos,
-        private UpsertEmpresaPjService $upsertEmpresa,
+        private SincronizarEmpresaDoPlanoService $sincronizarEmpresa,
         private AlocarNumeroFaturaService $alocarNumero,
     ) {
     }
@@ -34,11 +34,15 @@ class ProcessarFaturaPjService
         }
 
         try {
+            $dataBase = data_get($fatura->meta, 'data_base');
+            $dataBase = is_string($dataBase) && $dataBase !== '' ? $dataBase : null;
+
             $dados = $dadosOverride
                 ?? $this->sigoLaravel->dadosFaturaPj(
                     (string) $fatura->chave_plano_sigoweb,
                     $fatura->competencia,
                     $bearerToken,
+                    $dataBase,
                 );
 
             return $this->montarFatura($fatura, $dados);
@@ -69,16 +73,7 @@ class ProcessarFaturaPjService
             throw new DominioException('Nenhuma vida ativa retornada para o plano/competência.');
         }
 
-        $empresa = $this->upsertEmpresa->executar([
-            'chave_sigoweb' => (string) $plano['chave_sigoweb'],
-            'nome' => (string) ($plano['razao_social'] ?: $plano['nome'] ?: $plano['chave_sigoweb']),
-            'documento' => $plano['documento'] ?? null,
-            'endereco' => $plano['endereco'] ?? null,
-            'bairro' => $plano['bairro'] ?? null,
-            'cidade' => $plano['cidade'] ?? null,
-            'cep' => $plano['cep'] ?? null,
-            'uf' => $plano['uf'] ?? null,
-        ]);
+        $empresa = $this->sincronizarEmpresa->executar($fatura, $plano);
 
         $valoresAnteriores = $this->mapaValoresAnteriores(
             (string) $plano['chave_sigoweb'],
@@ -229,6 +224,7 @@ class ProcessarFaturaPjService
                 'meta' => array_merge($fatura->meta ?? [], [
                     'vidas_qtd' => count($lancamentosVidas),
                     'referencia' => $dados['referencia'] ?? null,
+                    'data_base' => $dados['data_base'] ?? data_get($fatura->meta, 'data_base'),
                     'soma_vidas' => $soma,
                     'processado_em' => now()->toIso8601String(),
                     'chave_plano' => $plano['chave_sigoweb'],
