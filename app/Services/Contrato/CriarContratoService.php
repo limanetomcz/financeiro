@@ -191,7 +191,8 @@ class CriarContratoService
                     $modoEmissao,
                     $vencimento,
                     $hoje,
-                    $jaPago && $perfil === PerfilPagamento::AVista
+                    $jaPago && $perfil === PerfilPagamento::AVista,
+                    $i
                 );
 
                 $parcela = Parcela::query()->create([
@@ -443,24 +444,21 @@ class CriarContratoService
         ModoEmissao $modo,
         Carbon $vencimento,
         Carbon $hoje,
-        bool $jaPagoAVista
+        bool $jaPagoAVista,
+        int $indiceParcela = 0
     ): array {
         if ($jaPagoAVista) {
             return [StatusParcela::Paga, $hoje->toDateString(), $hoje->copy()];
         }
 
-        // Cartão: cliente já pagou o ano (ex.: 12x no cartão). Parcelas nascem baixadas;
-        // emissão continua escalonada para não inchar o CR contábil de uma vez.
+        // Cartão: ano já liquidado na adesão (12x na operadora). Todas nascem `paga`
+        // com pago_em = hoje. Emissão: imediata = todas hoje; escalonada = hoje + N meses.
         if ($perfil === PerfilPagamento::CartaoParcelado) {
-            if ($modo === ModoEmissao::Imediata || $vencimento->format('Y-m') <= $hoje->format('Y-m')) {
-                $emitidaEm = $modo === ModoEmissao::Imediata
-                    ? $hoje->toDateString()
-                    : $vencimento->copy()->startOfMonth()->toDateString();
+            $emitidaEm = $modo === ModoEmissao::Imediata
+                ? $hoje->toDateString()
+                : $hoje->copy()->addMonthsNoOverflow($indiceParcela)->toDateString();
 
-                return [StatusParcela::Paga, $emitidaEm, $hoje->copy()];
-            }
-
-            return [StatusParcela::Prevista, null, null];
+            return [StatusParcela::Paga, $emitidaEm, $hoje->copy()];
         }
 
         if ($modo === ModoEmissao::Imediata) {

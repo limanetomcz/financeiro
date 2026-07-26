@@ -23,14 +23,15 @@ Contrato anual pago no cartão (valor cheio em 12x na operadora). Na Uniodonto a
 
 - `perfil_pagamento = cartao_parcelado`
 - `modo_emissao = escalonada` (padrão do perfil)
-- Mês corrente e anteriores: status `paga`, com `emitida_em` e `pago_em`
-- Meses futuros: `prevista` (ainda sem emissão) → **não incham o CR**
-- Job `parcelas:abrir-exigiveis` promove `prevista` → **`paga`** (não `aberta`) e preenche `emitida_em`
+- **Todas** as parcelas nascem `paga`, com `pago_em = hoje` (recebimento na adesão)
+- `emitida_em` acompanha os meses: hoje, hoje+1 mês, hoje+2 meses… (reconhecimento contábil)
+- Vencimento segue o calendário da adesão (ex.: 30/07, 30/08…)
+- Exemplo: emissão `hoje` / venc. `30/07` / pagto `hoje` → emissão `hoje+1m` / venc. `30/08` / pagto `hoje`
 
 ### Variante — emissão imediata (todas baixadas no ato)
 
 - `modo_emissao = imediata`
-- 12 parcelas `paga` com `emitida_em = hoje`
+- 12 parcelas `paga` com `emitida_em = hoje` e `pago_em = hoje`
 - Uso raro: só se a cooperativa aceitar reconhecer tudo no mês da adesão
 
 ---
@@ -57,7 +58,7 @@ Contrato anual pago no cartão (valor cheio em 12x na operadora). Na Uniodonto a
 
 | Caso | Perfil | Emissão | Status | Inadimplência |
 |------|--------|---------|--------|---------------|
-| Cartão 12x (Seridó) | `cartao_parcelado` | `escalonada` | `paga` / `prevista`→`paga` | Não (já liquidado) |
+| Cartão 12x (Seridó) | `cartao_parcelado` | `escalonada` | todas `paga` (`emitida_em` mês a mês) | Não (já liquidado) |
 | Cartão 12x tudo no ato | `cartao_parcelado` | `imediata` | todas `paga` | Não |
 | Anual à vista pago | `a_vista` + `ja_pago` | 1 parcela | `paga` | Só na renovação |
 | Boleto 12x | `boleto_parcelado` | `escalonada` | `aberta` / `prevista`→`aberta` | Mensal |

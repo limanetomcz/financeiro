@@ -13,7 +13,7 @@ class AbrirParcelasExigiveisService
     /**
      * Promove parcelas `prevista` cujo vencimento cai até o fim do mês de referência.
      * - boleto / demais: → `aberta`
-     * - cartão: → `paga` (já liquidado na adesão; só emite no mês)
+     * - cartão legado: → `paga` (contratos antigos ainda com prevista; novos já nascem pagas)
      *
      * @return array{abertas: int, pagas: int}
      */

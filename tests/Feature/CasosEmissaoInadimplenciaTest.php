@@ -40,7 +40,7 @@ class CasosEmissaoInadimplenciaTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_cartao_12x_emissao_imediata_abre_todas_hoje(): void
+    public function test_cartao_12x_emissao_imediata_baixa_todas_hoje(): void
     {
         $contrato = app(CriarContratoService::class)->executar([
             'contratante' => ['chave_sigoweb' => 'C1', 'tipo' => 'pf', 'nome' => 'Cartão imediato'],
@@ -54,27 +54,34 @@ class CasosEmissaoInadimplenciaTest extends TestCase
             'modo_emissao' => ModoEmissao::Imediata->value,
         ]);
 
-        $this->assertEquals(12, $contrato->parcelas->where('status', StatusParcela::Aberta)->count());
+        $this->assertEquals(12, $contrato->parcelas->where('status', StatusParcela::Paga)->count());
         $this->assertTrue($contrato->parcelas->every(fn ($p) => $p->emitida_em?->toDateString() === '2026-01-01'));
+        $this->assertTrue($contrato->parcelas->every(fn ($p) => $p->pago_em?->toDateString() === '2026-01-01'));
     }
 
-    public function test_cartao_12x_emissao_escalonada_nao_incha_cr(): void
+    public function test_cartao_12x_emissao_escalonada_todas_pagas_com_emissao_mensal(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-07-21'));
+
         $contrato = app(CriarContratoService::class)->executar([
             'contratante' => ['chave_sigoweb' => 'C2', 'tipo' => 'pf', 'nome' => 'Cartão escalonado'],
-            'vigencia_inicio' => '2026-01-01',
-            'vigencia_fim' => '2026-12-31',
+            'vigencia_inicio' => '2026-07-01',
+            'vigencia_fim' => '2027-06-30',
             'chave_plano_sigoweb' => 'PLANO-C2',
             'valor_total' => 1200,
             'quantidade_parcelas' => 12,
-            'primeiro_vencimento' => '2026-01-10',
+            'primeiro_vencimento' => '2026-07-30',
             'perfil_pagamento' => PerfilPagamento::CartaoParcelado->value,
             'modo_emissao' => ModoEmissao::Escalonada->value,
         ]);
 
-        $this->assertEquals(1, $contrato->parcelas->where('status', StatusParcela::Aberta)->count());
-        $this->assertEquals(11, $contrato->parcelas->where('status', StatusParcela::Prevista)->count());
-        $this->assertNull($contrato->parcelas->firstWhere('numero', 2)?->emitida_em);
+        $this->assertEquals(12, $contrato->parcelas->where('status', StatusParcela::Paga)->count());
+        $this->assertEquals(0, $contrato->parcelas->where('status', StatusParcela::Prevista)->count());
+
+        $segunda = $contrato->parcelas->firstWhere('numero', 2);
+        $this->assertSame('2026-08-21', $segunda?->emitida_em?->toDateString());
+        $this->assertSame('2026-08-30', $segunda?->vencimento->toDateString());
+        $this->assertSame('2026-07-21', $segunda?->pago_em?->toDateString());
     }
 
     public function test_a_vista_pago_nao_fica_inadimplente(): void

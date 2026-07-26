@@ -68,7 +68,7 @@ Fatia do contrato. É a dívida unitária.
 
 Campo `emitida_em`: quando a parcela entrou no CR / reconhecimento mensal.  
 `perfil_pagamento = boleto_parcelado` + `modo_emissao = escalonada`: mês corrente `aberta`; futuros `prevista`. Job promove → `aberta`.  
-`perfil_pagamento = cartao_parcelado` + `escalonada` (Seridó): mês corrente já `paga`; futuros `prevista`. Job promove → **`paga`** (recebimento na adesão; emissão mês a mês).  
+`perfil_pagamento = cartao_parcelado` + `escalonada` (Seridó): **todas** `paga` com `pago_em = hoje`; `emitida_em` = hoje + N meses (reconhecimento contábil mês a mês).  
 `modo_emissao = imediata` no boleto: todas `aberta` na adesão (útil no lab de remessa).
 
 ### Cobrança

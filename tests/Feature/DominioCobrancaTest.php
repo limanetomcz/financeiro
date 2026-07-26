@@ -116,7 +116,7 @@ class DominioCobrancaTest extends TestCase
             'chave_plano_sigoweb' => 'PLANO-CARTAO',
             'valor_total' => 1200.00,
             'quantidade_parcelas' => 12,
-            'primeiro_vencimento' => '2026-01-10',
+            'primeiro_vencimento' => '2026-07-30',
             'perfil_pagamento' => 'cartao_parcelado',
             'modo_emissao' => 'escalonada',
         ]);
@@ -125,26 +125,25 @@ class DominioCobrancaTest extends TestCase
         $previstas = $contrato->parcelas->where('status', StatusParcela::Prevista);
         $abertas = $contrato->parcelas->where('status', StatusParcela::Aberta);
 
-        // jul/2026: jan..jul pagas; ago..dez previstas; nenhuma aberta no CR
-        $this->assertEquals(7, $pagas->count());
-        $this->assertEquals(5, $previstas->count());
+        // Todas liquidadas na adesão; emissão mês a mês a partir de hoje.
+        $this->assertEquals(12, $pagas->count());
+        $this->assertEquals(0, $previstas->count());
         $this->assertEquals(0, $abertas->count());
-        $this->assertTrue($pagas->every(fn ($p) => $p->pago_em !== null));
-        $this->assertTrue($pagas->every(fn ($p) => $p->emitida_em !== null));
+        $this->assertTrue($pagas->every(fn ($p) => $p->pago_em?->toDateString() === '2026-07-21'));
 
-        Carbon::setTestNow(Carbon::parse('2026-08-05'));
-        $resultado = app(AbrirParcelasExigiveisService::class)->executar();
-
-        $this->assertEquals(0, $resultado['abertas']);
-        $this->assertEquals(1, $resultado['pagas']);
-        $this->assertEquals(
-            8,
-            Parcela::query()->where('contrato_id', $contrato->id)->where('status', StatusParcela::Paga)->count()
-        );
-        $this->assertEquals(
-            0,
-            Parcela::query()->where('contrato_id', $contrato->id)->where('status', StatusParcela::Aberta)->count()
-        );
+        $hoje = Carbon::parse('2026-07-21');
+        foreach ($contrato->parcelas->sortBy('numero')->values() as $i => $parcela) {
+            $this->assertSame(
+                $hoje->copy()->addMonthsNoOverflow($i)->toDateString(),
+                $parcela->emitida_em?->toDateString(),
+                "emitida_em da parcela ".($i + 1)
+            );
+            $this->assertSame(
+                Carbon::parse('2026-07-30')->addMonthsNoOverflow($i)->toDateString(),
+                $parcela->vencimento->toDateString(),
+                "vencimento da parcela ".($i + 1)
+            );
+        }
     }
 
     public function test_consolidada_com_juros_e_multa_e_liquidacao(): void
