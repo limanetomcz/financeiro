@@ -1,4 +1,4 @@
-# Próximos passos (atualizado em 24/07/2026)
+# Próximos passos (atualizado em 27/07/2026)
 
 Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
 
@@ -22,6 +22,7 @@ Quando voltar, diga: **“relembra os próximos passos”** (este arquivo).
   - 4 PDFs: fatura, demonstrativo titulares, demonstrativo completo, boleto
   - `data_emissao` + `PATCH /faturas/{id}/emissao` (só para o passado) e `PATCH .../vencimento` (sincroniza cobrança aberta)
   - `GET /faturas` com filtros ricos (número, plano, status, emissão/vencimento, sacado, apenas_abertas, excluidas…)
+  - **Lote:** `POST /faturas/lote` (competência + data base → todos planos E; lab botão “Gerar todas”)
   - Ver [fatura-pj.md](fatura-pj.md)
 
 ## Lab Sigoweb
@@ -31,7 +32,7 @@ Branch: `feature/lab-financeiro-prototipo-pj` (não mergear em `develop`/`main` 
 - `view_php/vue/financeiro/laboratorioFinanceiro.php`
 - `js/jsvue/laboratorioFinanceiro.js`
 - Fluxo PF: família → gerar → listar → **Registrar boletos** → remessa `.CRM` → retorno `.CRT` → PDF
-- Fluxo PJ (seção 7): buscar dados Laravel → gerar fatura (síncrono) → PDFs → alterar datas → consultar com filtros → limpar
+- Fluxo PJ (seção 7): buscar dados Laravel → gerar fatura (síncrono) → **gerar todas (lote)** → PDFs → alterar datas → consultar com filtros → limpar
 
 URL: `pagina.php?url=vue/financeiro/laboratorioFinanceiro.php`  
 API: `localStorage.url_api_financeiro` + Bearer JWT.
@@ -55,7 +56,32 @@ Não mexer em CNAB/remessa/retorno.
 - PF: gerar financeiro → boleto PDF / remessa com endereço real → aceitar `.CRM` no Sicredi + processar `.CRT`
 - PJ: fatura competência real → desconto/lançamentos → cobrança → remessa do boleto PJ (mesmo CNAB)
 
-### C. Depois do lab estável
+### C. Antes de produção (arquitetura async — **obrigatório**)
+
+Hoje no lab o botão **Gerar todas** já responde **202** (job orquestrador); o cálculo Oracle continua no worker (`ProcessarFaturaPjJob`). Ainda falta endurecer para cutover:
+
+**Alvo de produção:**
+
+```text
+Sigoweb  →  POST /faturas ou /faturas/lote  →  202 imediato
+              ↓
+         fila cobranca (1 job por plano, ou lote orquestrado)
+              ↓
+         GET sigo-laravel (leitura Oracle)  —  dentro do worker, com retry
+              ↓
+         fatura aberta / erro  →  Sigoweb só consulta status
+```
+
+Pendências concretas:
+
+- [ ] Lote **sempre assíncrono** em produção (`sincrono` só lab/debug)
+- [ ] Worker Redis estável (`queue:work` / Horizon) na fila `cobranca`
+- [ ] Timeout / retry / backoff na chamada Financeiro → sigo-laravel
+- [ ] UI Sigoweb: pedir lote → acompanhar progresso (processando / aberta / erro) sem esperar HTTP longo
+- [ ] (Opcional) cache ou snapshot de vidas por competência+data_base se o Oracle continuar lento
+- [ ] Medir tempo real por plano (vidas grandes) antes do cutover `112`
+
+### D. Depois do lab estável
 - Remessa ponta a ponta (aceite `.CRM` no Sicredi + retorno em produção controlada)
 - PIX / API registro Sicredi (discovery)
 - UI real Sigoweb (fora do lab)
@@ -72,9 +98,10 @@ Não mexer em CNAB/remessa/retorno.
 
 | Tema | Nota |
 |------|------|
+| **Async produção (lote + Laravel)** | Ver §C — **bloqueia cutover** |
 | Remessa ponta a ponta Sicredi | Aceite do `.CRM` no banco + retorno |
 | PIX / registro online Sicredi | Discovery |
-| UI operacional Sigoweb | Lab ≠ produção |
+| UI operacional Sigoweb | Lab ≠ produção; acompanhar status do lote |
 | Cutover `112` | Feature flag + dual-run |
 | Arquivos `.CRT`/PDF locais | **Não commitá-los** (PII) |
 | Seed após recreate Docker | Sem Cliente `112` a API autentica e barra |

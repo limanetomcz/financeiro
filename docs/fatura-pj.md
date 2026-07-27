@@ -19,6 +19,16 @@ Abandonar no cutover: `tb_fatura`, `tb_mensalidade`, `tb_lancamento_mensalidade`
 
 `sincrono=1` processa na hora (lab sem worker).
 
+### Arquitetura: sync vs async
+
+| Trecho | Lab (hoje) | Produção (alvo) |
+|--------|------------|-----------------|
+| Sigoweb → Financeiro | `sincrono=true` (espera a fatura) | **sempre async** → `202` + `processando` |
+| Lote `/faturas/lote` | loop síncrono no request | **enfileira N jobs** (1 por plano); UI acompanha |
+| Financeiro → sigo-laravel | HTTP **dentro** do job/request | mesmo HTTP, mas **só no worker** + retry; nunca no browser |
+
+O gargalo real é o Oracle via Laravel (vidas por plano). Por isso o lote em produção **não pode** ficar no HTTP do Sigoweb — ver [proximos-passos.md](proximos-passos.md) §C.
+
 ### Data base (corte de vidas)
 
 Mesma regra do Sigoweb / `Fun_GeraFaturaPrePagto`:
@@ -48,6 +58,7 @@ Outro tenant = outra strategy (parametrizar depois).
 | Método | Rota | Uso |
 |--------|------|-----|
 | `POST` | `/faturas` | `chave_plano_sigoweb` + `competencia` + `data_base?` → 202 |
+| `POST` | `/faturas/lote` | Todos planos E → **202** + job orquestrador (faturas `processando`). `sincrono=true` só lab/debug |
 | `GET` | `/faturas` | Lista com filtros (número, plano, status, emissão/vencimento, sacado, apenas_abertas, …) |
 | `DELETE` | `/faturas/{id}` | Remove fatura (+ boleto se não pago) |
 | `PATCH` | `/faturas/{id}/emissao` | Trocar `data_emissao` (deve ser anterior à atual) |

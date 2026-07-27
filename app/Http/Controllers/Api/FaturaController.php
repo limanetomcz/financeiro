@@ -18,7 +18,9 @@ use App\Services\Fatura\GerarPdfDemonstrativoFaturaService;
 use App\Services\Fatura\GerarPdfFaturaPjService;
 use App\Services\Fatura\ListarFaturasService;
 use App\Services\Fatura\RemoverFaturaService;
+use App\Jobs\SolicitarFaturasPjLoteJob;
 use App\Services\Fatura\SolicitarFaturaPjService;
+use App\Services\Fatura\SolicitarFaturasPjLoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -207,6 +209,81 @@ class FaturaController extends Controller
         return response()->json([
             'message' => 'Informe chave_plano_sigoweb (fluxo oficial) ou contratante_id (legado).',
         ], 422);
+    }
+
+    /**
+     * Gera faturas para todos os planos E (lab / protótipo).
+     * POST /faturas/lote { competencia, data_base?, vencimento?, sincrono?, percentual_reajuste? }
+     *
+     * Padrão: 202 imediato + job orquestrador (faturas nascem processando na fila).
+     * sincrono=true: só lab/debug — espera o loop (ainda sem Oracle se jobs forem async internos).
+     */
+    public function storeLote(Request $request, SolicitarFaturasPjLoteService $lote): JsonResponse
+    {
+        $dados = $request->validate([
+            'competencia' => ['required', 'regex:/^\d{4}-\d{2}$/'],
+            'data_base' => ['nullable', 'date'],
+            'vencimento' => ['nullable', 'date'],
+            'sincrono' => ['sometimes', 'boolean'],
+            'percentual_reajuste' => ['nullable', 'numeric'],
+            // Lab/teste: lista explícita de planos (pula listagem Laravel).
+            'planos' => ['nullable', 'array'],
+            'planos.*' => ['string', 'max:64'],
+        ]);
+
+        $token = null;
+        if (preg_match('/^Bearer\s+(.+)$/i', (string) $request->header('Authorization', ''), $m)) {
+            $token = trim($m[1]);
+        }
+
+        $sincrono = $request->boolean('sincrono');
+
+        if (! $sincrono) {
+            SolicitarFaturasPjLoteJob::dispatch(
+                $dados['competencia'],
+                $dados['data_base'] ?? null,
+                $dados['vencimento'] ?? null,
+                $token,
+                (float) ($dados['percentual_reajuste'] ?? 0),
+                $dados['planos'] ?? null,
+            );
+
+            return response()->json([
+                'message' => 'Geração enfileirada. As faturas vão aparecer como processando; atualize a consulta.',
+                'processando' => true,
+                'competencia' => $dados['competencia'],
+                'data_base' => $dados['data_base'] ?? null,
+            ], 202);
+        }
+
+        try {
+            $resultado = $lote->executar(
+                $dados['competencia'],
+                $dados['data_base'] ?? null,
+                $dados['vencimento'] ?? null,
+                true,
+                $token,
+                (float) ($dados['percentual_reajuste'] ?? 0),
+                $dados['planos'] ?? null,
+            );
+        } catch (DominioException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $ok = count($resultado['solicitadas']);
+        $err = count($resultado['erros']);
+        $skip = count($resultado['puladas']);
+
+        return response()->json([
+            'message' => sprintf(
+                'Lote: %d solicitada(s), %d pulada(s), %d erro(s) de %d plano(s).',
+                $ok,
+                $skip,
+                $err,
+                $resultado['total_planos']
+            ),
+            'lote' => $resultado,
+        ], 201);
     }
 
     public function emitirCobranca(string $id, Request $request, EmitirCobrancaFaturaPjService $service): JsonResponse

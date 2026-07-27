@@ -58,6 +58,7 @@ Route::middleware([AuthenticateSigoweb::class])->group(function () {
 
     Route::get('/faturas', [FaturaController::class, 'index']);
     Route::post('/faturas', [FaturaController::class, 'store']);
+    Route::post('/faturas/lote', [FaturaController::class, 'storeLote']);
     Route::get('/faturas/{id}', [FaturaController::class, 'show']);
     Route::delete('/faturas/{id}', [FaturaController::class, 'destroy']);
     Route::patch('/faturas/{id}/emissao', [FaturaController::class, 'alterarEmissao']);

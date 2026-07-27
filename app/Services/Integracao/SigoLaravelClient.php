@@ -72,6 +72,78 @@ class SigoLaravelClient
         return $this->dadosFaturaPj($chavePlano, $competencia, $bearerToken, $dataBase);
     }
 
+    /**
+     * Planos empresariais ativos (pla_tipo=E, sem exclusão).
+     *
+     * @return list<array{pla_codigo: string, pla_nome?: string}>
+     */
+    public function listarPlanosEmpresa(?string $bearerToken = null): array
+    {
+        $base = $this->baseUrl();
+        $token = $bearerToken ?: $this->tokenDaRequisicaoAtual();
+
+        if (! $token) {
+            throw new DominioException('Token Sigoweb ausente para listar planos no Laravel.');
+        }
+
+        // Preferir searchByTipo/E (exclui pla_dtexcl); fallback listaPlanosEmpresa.
+        $urls = [
+            rtrim($base, '/') . '/api/v1/comercial/plano/searchByTipo/E',
+            rtrim($base, '/') . '/api/v1/comercial/plano/listaPlanosEmpresa',
+        ];
+
+        $lastError = null;
+        foreach ($urls as $url) {
+            try {
+                $response = Http::withToken($token)
+                    ->acceptJson()
+                    ->timeout(60)
+                    ->get($url);
+            } catch (\Throwable $e) {
+                $lastError = $e->getMessage();
+                continue;
+            }
+
+            if (! $response->successful()) {
+                $lastError = 'HTTP '.$response->status();
+                continue;
+            }
+
+            $json = $response->json();
+            $lista = is_array($json) ? $json : [];
+            // Alguns endpoints embrulham em data.
+            if (isset($lista['data']) && is_array($lista['data'])) {
+                $lista = $lista['data'];
+            }
+
+            $planos = [];
+            foreach ($lista as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $codigo = trim((string) ($item['pla_codigo'] ?? $item['codigo'] ?? ''));
+                if ($codigo === '') {
+                    continue;
+                }
+                $planos[] = [
+                    'pla_codigo' => $codigo,
+                    'pla_nome' => (string) ($item['pla_nome'] ?? $item['nome'] ?? ''),
+                ];
+            }
+
+            if ($planos !== []) {
+                usort($planos, fn ($a, $b) => strcmp($a['pla_codigo'], $b['pla_codigo']));
+
+                return $planos;
+            }
+        }
+
+        throw new DominioException(
+            'Não foi possível listar planos empresariais no sigo-laravel'
+            .($lastError ? ': '.$lastError : '.')
+        );
+    }
+
     private function baseUrl(): string
     {
         $cliente = ClienteContext::get();
