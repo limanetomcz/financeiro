@@ -1,0 +1,469 @@
+@page {
+    margin: 12mm 10mm;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    color: #000;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.linha {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin: 4px 0 8px;
+}
+
+.banco {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.banco span {
+    border-right: 2px solid #000;
+    padding-right: 6px;
+    margin-right: 6px;
+}
+
+.cell {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    vertical-align: top;
+}
+
+.lbl {
+    font-size: 8px;
+    color: #333;
+    display: block;
+}
+
+.lbl-9 {
+    font-size: 9px;
+    color: #333;
+    display: block;
+}
+
+.val {
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.val-padrao {
+    font-size: 10px;
+}
+
+.val-center {
+    display: block;
+    font-size: 10px;
+    text-align: center;
+}
+
+.val-pouco-direita {
+    display: block;
+    font-size: 10px;
+    margin-left: 25px;
+}
+
+.val-right {
+    display: block;
+    font-size: 10px;
+    text-align: right;
+}
+
+.right {
+    text-align: right;
+}
+
+.mt {
+    margin-top: 10px;
+}
+
+.mb {
+    margin-bottom: 8px;
+}
+
+.corte {
+    border-top: 1px dashed #000;
+    margin: 10px 0;
+    padding-top: 6px;
+    font-size: 8px;
+    color: #444;
+}
+
+.barcode {
+    text-align: center;
+    margin-top: 6px;
+}
+
+.barcode>div {
+    margin: 0 auto;
+}
+
+h3 {
+    font-size: 11px;
+    margin: 0 0 4px;
+}
+
+.small {
+    font-size: 8px;
+}
+
+
+.top-wrap {
+    font-size: 0;
+    margin: 0 0 8px 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+.data-vencimento {
+    margin-left: 30px;
+    font-size: 10px;
+}
+
+.logo-box {
+    display: inline-block;
+    width: 200px;
+    min-height: 52px;
+    margin-right: 2px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.logo-box img {
+    display: block;
+    max-width: 100%;
+    max-height: 220px;
+    margin-left: 45px;
+    margin-top: 25px;
+}
+
+.receipt-column {
+    display: inline-block;
+    width: 420px;
+    margin-left: 80px;
+    vertical-align: top;
+}
+
+.receipt-box {
+    display: block;
+    width: 100%;
+    border: 1px solid #000;
+    padding: 4px 5px;
+    vertical-align: top;
+    box-sizing: border-box;
+    min-height: 65px;
+    font-size: 9px;
+}
+
+.receipt-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: right;
+}
+
+.receipt-meta {
+    font-size: 10px;
+    line-height: 1.25;
+}
+
+.info-box {
+    border: 1px solid #000;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    font-size: 0;
+}
+
+.texto-padrao {
+    font-size: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+    display: block;
+    margin-bottom: 3px;
+    margin-top: 6px;
+}
+
+.texto-estado {
+    font-size: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+    display: block;
+    margin-top: 40px;
+    margin-right: 15px;
+}
+
+.info-row {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.info-col {
+    display: table-cell;
+    border: none;
+    padding: 2px 4px;
+    vertical-align: top;
+    box-sizing: border-box;
+    font-size: 9px;
+}
+
+.info-col.wide {
+    width: 70%;
+}
+
+.info-col.narrow {
+    width: 15%;
+}
+
+
+
+
+.quadros {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    height: 290px;
+}
+
+.quadros td {
+    width: 50%;
+    border: 1px solid #000;
+    vertical-align: top;
+    padding: 0;
+}
+
+.quadro-esquerdo {
+    height: 290px;
+}
+
+.titulo-info {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7px;
+    margin-left: 5px;
+    margin-top: 2px;
+    padding: 3px 2px;
+}
+
+.quadro-direito {
+    height: 280px;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-left: 5px;
+    margin-top: 5px;
+}
+
+.mensagem {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 8px 5px;
+    border-bottom: 1px solid #000;
+    min-height: 70px;
+}
+
+.demonstrativo {}
+
+.operadora {
+    display: inline-block;
+    background: #000;
+    color: #fff;
+    text-align: left;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 5px 10px;
+    margin-top: 5px;
+    float: right;
+    clear: both;
+    margin-right: 18px
+}
+
+.referencia {
+    display: block;
+    clear: both;
+    margin-top: 12px;
+    font-size: 9px;
+    margin-left: 5px;
+}
+
+.tributos {
+    margin-top: 5px;
+    font-size: 9px;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.titulo-centro {
+    text-align: center;
+    font-size: 9px;
+    font-weight: bold;
+    margin: 12px 0 5px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.titulo-demonstativo {
+    text-align: center;
+    font-size: 8px;
+    font-weight: bold;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.tabela-pessoas,
+.tabela-pagamentos {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+}
+
+.tabela-pessoas th,
+.tabela-pagamentos th {
+    text-align: center;
+    margin-left: 10px;
+}
+
+.tabela-pessoas-demonstrativo {
+    width: 70%;
+    border: none;
+    border-collapse: collapse;
+    font-size: 7px;
+}
+
+.tabela-pessoas-demonstrativo thead,
+.tabela-pessoas-demonstrativo tbody,
+.tabela-pessoas-demonstrativo tr,
+.tabela-pessoas-demonstrativo th,
+.tabela-pessoas-demonstrativo td {
+    border: none;
+}
+
+.tabela-pessoas-demonstrativo th {
+    font-style: italic;
+    font-weight: bold;
+    text-align: left;
+    padding: 0 0 3px 0;
+}
+
+.tabela-pessoas-demonstrativo td {
+    margin-top: 5px;
+    padding: 2px 0;
+}
+
+.tabela-pessoas-demonstrativo .nome {
+    width: 80%;
+    text-align: left;
+}
+
+.tabela-pessoas-demonstrativo .valor {
+    width: 20%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.container-demonstrativo {
+    width: 100%;
+    text-align: center;
+}
+
+.tabela-pessoas-demonstrativo {
+    width: 75%;
+    /* ajuste conforme necessário */
+    margin: 0 auto;
+    /* centraliza a tabela */
+    border-collapse: collapse;
+    font-size: 7px;
+}
+
+.pagamentos-realizados {
+    margin-top: 30px;
+}
+
+.container-pagamentos {
+    width: 100%;
+    text-align: center;
+}
+
+.banco-header {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 7px;
+}
+
+.banco-header td {
+    vertical-align: middle;
+    padding: 2px 4px;
+    margin: 0;
+}
+
+.banco-header tr:first-child td {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.banco-logo {
+    padding: 0;
+    line-height: 1;
+}
+
+.banco-logo img {
+    max-height: 40px;
+    max-width: 100px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+    margin-left: 12px;
+}
+
+.banco-linha .linha {
+    margin: 0;
+}
+
+.banco-digitavel {
+    white-space: nowrap;
+    word-break: normal;
+    overflow-wrap: normal;
+}
+
+.banco-codigo .banco,
+.banco-linha .linha {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.banco-codigo,
+.banco-linha {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.banco-codigo span,
+.banco-linha span {
+    display: block;
+    text-align: center;
+}
+
+.banco-codigo span {
+    font-size: 18px;
+}
+
+.banco-linha span {
+    font-size: 16px;
+    letter-spacing: 0.5px;
+}
+
+
+.tabela-pagamentos,
+.tabela-pagamentos th,
+.tabela-pagamentos td {
+    border: none !important;
+}
+
+.tabela-pagamentos th,
+.tabela-pagamentos td {
+    padding: 2px 6px; /* ajuste como preferir */
+}
