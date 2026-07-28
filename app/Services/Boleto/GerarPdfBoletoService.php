@@ -7,6 +7,7 @@ use App\Bancario\FabricaAdaptadorBanco;
 use App\Bancario\FabricaAdaptadorBoleto;
 use App\Exceptions\DominioException;
 use App\Models\Cobranca;
+use App\Services\Cobranca\CobrancaService;
 use App\Support\Tenant\ClienteContext;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -18,10 +19,16 @@ use Picqer\Barcode\BarcodeGeneratorHTML;
  */
 class GerarPdfBoletoService
 {
+    private FabricaAdaptadorBoleto $fabricaBoleto;
+    private FabricaAdaptadorBanco $fabricaRemessa;
+
     public function __construct(
-        private readonly FabricaAdaptadorBoleto $fabricaBoleto,
-        private readonly FabricaAdaptadorBanco $fabricaRemessa,
-    ) {}
+        FabricaAdaptadorBoleto $fabricaBoleto,
+        FabricaAdaptadorBanco $fabricaRemessa
+    ) {
+        $this->fabricaBoleto = $fabricaBoleto;
+        $this->fabricaRemessa = $fabricaRemessa;
+    }
 
     public function executar(Cobranca $cobranca): string
     {
@@ -83,19 +90,22 @@ class GerarPdfBoletoService
                 break;
             }
         }
+        $historico10ultimosPagamewntos = CobrancaService::buscarHistoricoPagamentos($cliente->id);
 
         $html = view($adapterBoleto->viewTemplate(), [
             'conta' => $conta,
+            'cliente' => $cliente,
+            'historico10ultimosPagamewntos' => $historico10ultimosPagamewntos,
             'cobranca' => $cobranca,
             'pagador' => [
-                'nome' => $pagador?->nome ?? 'PAGADOR',
-                'documento' => preg_replace('/\D/', '', (string) ($pagador?->documento ?? '')) ?: '',
-                'chave' => $pagador?->chave_sigoweb,
-                'endereco' => $pagador?->endereco ?: $padrao['endereco'],
-                'bairro' => $pagador?->bairro ?: $padrao['bairro'],
-                'cidade' => $pagador?->cidade ?: $padrao['cidade'],
-                'uf' => $pagador?->uf ?: $padrao['uf'],
-                'cep' => preg_replace('/\D/', '', (string) ($pagador?->cep ?: $padrao['cep'])) ?: '',
+                'nome' => isset($pagador) ? $pagador->nome : 'PAGADOR',
+                'documento' => preg_replace('/\D/', '', (string) (isset($pagador) ? $pagador->documento : '')) ?: '',
+                'chave' => isset($pagador) ? $pagador->chave_sigoweb : null,
+                'endereco' => isset($pagador) ? ($pagador->endereco ?: $padrao['endereco']) : $padrao['endereco'],
+                'bairro' => isset($pagador) ? ($pagador->bairro ?: $padrao['bairro']) : $padrao['bairro'],
+                'cidade' => isset($pagador) ? ($pagador->cidade ?: $padrao['cidade']) : $padrao['cidade'],
+                'uf' => isset($pagador) ? ($pagador->uf ?: $padrao['uf']) : $padrao['uf'],
+                'cep' => preg_replace('/\D/', '', (string) (isset($pagador) ? ($pagador->cep ?: $padrao['cep']) : $padrao['cep'])) ?: '',
             ],
             'barras' => $barras,
             'barcode_html' => $barcodeHtml,
@@ -103,8 +113,10 @@ class GerarPdfBoletoService
             'composicao' => $composicao,
             'cnpj_formatado' => $this->formatarCnpj($conta->beneficiarioCnpj),
             'documento_formatado' => $this->formatarDocumento(
-                preg_replace('/\D/', '', (string) ($pagador?->documento ?? '')) ?: ''
+                preg_replace('/\D/', '', (string) (isset($pagador) ? $pagador->documento : '')) ?: ''
             ),
+            'logo_base64' => $this->carregarLogoBase64('imgs/logoUniodonto.png'),
+            'logo_sicredi_base64' => $this->carregarLogoBase64('imgs/sicredi-logo.png'),
         ])->render();
 
         $options = new Options;
@@ -140,5 +152,20 @@ class GerarPdfBoletoService
         }
 
         return $doc;
+    }
+
+    private function carregarLogoBase64(string $caminho): string
+    {
+        $logoPath = public_path($caminho);
+        if (! file_exists($logoPath)) {
+            return '';
+        }
+
+        $logoContents = file_get_contents($logoPath);
+        if ($logoContents === false) {
+            return '';
+        }
+
+        return 'data:image/png;base64,'.base64_encode($logoContents);
     }
 }
