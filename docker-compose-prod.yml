@@ -1,0 +1,117 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financeiro-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-financeiro}
+      DB_USERNAME: ${DB_USERNAME:-financeiro}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+    volumes:
+      - .:/var/www/html
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    networks:
+      - itabuna_network
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financeiro-queue
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-financeiro}
+      DB_USERNAME: ${DB_USERNAME:-financeiro}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      QUEUE_NAMES: default,cobranca,bancario
+    volumes:
+      - .:/var/www/html
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: ["/var/www/html/docker/entrypoint-queue.sh"]
+    depends_on:
+      - redis
+      - app
+    networks:
+      - itabuna_network
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financeiro-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-financeiro}
+      DB_USERNAME: ${DB_USERNAME:-financeiro}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    volumes:
+      - .:/var/www/html
+    entrypoint: ["php", "artisan", "schedule:work"]
+    depends_on:
+      - redis
+      - app
+    networks:
+      - itabuna_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: financeiro-redis
+    restart: unless-stopped
+    volumes:
+      - financeiro_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - itabuna_network
+
+volumes:
+  financeiro_redis_data:
+
+networks:
+  itabuna_network:
+    external: true
