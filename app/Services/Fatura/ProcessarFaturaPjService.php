@@ -118,6 +118,12 @@ class ProcessarFaturaPjService
                     'pessoa' => $vida['pessoa'] ?? null,
                     'tipodep' => $vida['tipodep'] ?? null,
                     'tipopag' => $vida['tipopag_historico'] ?? $vida['tipopag'] ?? null,
+                    'data_inclusao' => $this->primeiroValor($vida, [
+                        'data_inclusao', 'inclusao', 'dt_inclusao', 'dtincl', 'dtinclpla', 'ben_dtinclpla',
+                    ]),
+                    'data_nascimento' => $this->primeiroValor($vida, [
+                        'data_nascimento', 'nascimento', 'dt_nascimento', 'dtnasc', 'ben_dtnasc', 'ben_dtnascimento',
+                    ]),
                     'preco_tabela' => data_get($vida, 'preco.valor'),
                     'valor_anterior' => $anterior,
                 ],
@@ -233,6 +239,27 @@ class ProcessarFaturaPjService
 
             return $fatura->fresh(['lancamentos', 'contratante']);
         });
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    /**
+     * Mantém compatibilidade com os nomes usados pelas diferentes versões do
+     * payload de vidas. Campos ausentes ou nulos permanecem nulos.
+     *
+     * @param  array<string, mixed>  $vida
+     * @param  list<string>  $chaves
+     */
+    private function primeiroValor(array $vida, array $chaves): mixed
+    {
+        foreach ($chaves as $chave) {
+            if (array_key_exists($chave, $vida) && $vida[$chave] !== null && $vida[$chave] !== '') {
+                return $vida[$chave];
+            }
+        }
+
+        return null;
     }
 
     /**
